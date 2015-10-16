@@ -51,7 +51,7 @@ IntersectionType trace(float4 origin, float4 direction,
 __kernel void sample(//float4 origin, __global float4 *direction,
         __write_only image2d_t out)
 {
-    int2 coord = (get_global_id(1), get_global_id(0));
-    uint4 color = (255, 0, 0, 255);
+    int2 coord = (int2) (get_global_id(1), get_global_id(0));
+    uint4 color = (uint4) (255, 0, 0, 255);
     write_imageui(out, coord, color);
 }
