@@ -1,0 +1,88 @@
+/*
+ * Author: Renato Utsch Gonçalves
+ * Computer Science, UFMG
+ * Advanced Computer Graphics
+ * Practical exercise 1 - Distributed Ray Tracer
+ *
+ * Copyright (c) 2015 Renato Utsch <renatoutsch@gmail.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+#ifndef CLSAMPLER_CODEGENERATOR_HPP
+#define CLSAMPLER_CODEGENERATOR_HPP
+
+#include "../World.hpp"
+#include <string>
+
+/**
+ * Generates OpenCL code that represents the given World.
+ */
+class CodeGenerator {
+    /// Generates the structures.
+    std::string generateStructures(const World &world);
+
+    /// Generates the lights.
+    std::string generateLights(const World &world);
+
+    /// Generates the solid textures.
+    std::string generateSolidTextures(const World &world);
+
+    /// Generates the checker textures.
+    std::string generateCheckerTextures(const World &world);
+
+    /// Generates the map textures.
+    std::string generateMapTextures(const World &world);
+
+    /// Generates the materials.
+    std::string generateMaterials(const World &world);
+
+    /// Generates the sphere objects.
+    std::string generateSphereObjects(const World &world);
+
+    /// Generates the polyhedron objects.
+    std::string generatePolyhedronObjects(const World &world);
+
+    /// Writes a light structure initialization code.
+    std::string writeLight(const Light &light);
+
+    /// Writes a solid texture.
+    std::string writeSolidTexture(const SolidTexture &tex);
+
+    /// Writes a material.
+    std::string writeMaterial(const Material &material);
+
+    /// Writes a sphere object.
+    std::string writeSphereObject(const SphereObject &sphere);
+
+    /// Writes a point structure.
+    std::string writePoint(const Point &point);
+
+    /// Writes a color structure.
+    std::string writeColor(const Color &color);
+
+    /// Writes a attenuation structure.
+    std::string writeAttenuation(const Attenuation &attenuation);
+
+public:
+    /// Generates code about the given world and returns it.
+    std::string generateCode(const World &world);
+};
+
+#endif // !CLSAMPLER_CODEGENERATOR_HPP

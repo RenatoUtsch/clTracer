@@ -1,0 +1,11 @@
+build
+.*
+*~
+*.o
+*.a
+*.lib
+*.so
+*.ar
+*.dylib
+*.dll
+*.obj
