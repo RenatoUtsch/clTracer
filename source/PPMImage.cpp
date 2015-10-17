@@ -40,7 +40,7 @@ PPMImage::PPMImage(uint8_t *aImage, int aWidth, int aHeight)
         _data[i].resize(_width);
 
         for(int j = 0; j < _width; ++j) {
-            size_t pos = 4 * (_height * i + j);
+            size_t pos = 4 * (_width * i + j);
             _data[i][j].fromRGB(aImage[pos], aImage[pos + 1], aImage[pos + 2]);
         }
     }

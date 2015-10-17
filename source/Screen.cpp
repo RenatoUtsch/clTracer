@@ -31,10 +31,13 @@
 
 Screen::Screen(const char *aInput, int aWidthInPixels, int aHeightInPixels)
         : _widthInPixels(aWidthInPixels), _heightInPixels(aHeightInPixels),
-          _recalculatePixels(true), _recalculateCameraPos(true) {
+          _recalculateTopLeft(true), _recalculateCameraPos(true),
+          _recalculateUpVector(true), _recalculateRightVector(true) {
 
-    _linearizedPixelPositions = new float[_widthInPixels * _heightInPixels * 4];
+    _linearizedTopLeftPixel = new float[4];
     _linearizedCameraPos = new float[4];
+    _linearizedUpVector = new float[4];
+    _linearizedRightVector = new float[4];
 
     // Read the input file.
     std::ifstream in(aInput);
@@ -82,6 +85,59 @@ Screen::Screen(const char *aInput, int aWidthInPixels, int aHeightInPixels)
 }
 
 Screen::~Screen() {
-    delete [] _linearizedPixelPositions;
+    delete [] _linearizedTopLeftPixel;
     delete [] _linearizedCameraPos;
+    delete [] _linearizedUpVector;
+    delete [] _linearizedRightVector;
+}
+
+const float *Screen::linearizedTopLeftPixel() {
+    if(_recalculateTopLeft) {
+        Point topLeft = topLeftPixel();
+        _linearizedTopLeftPixel[0] = topLeft.x;
+        _linearizedTopLeftPixel[1] = topLeft.y;
+        _linearizedTopLeftPixel[2] = topLeft.z;
+        _linearizedTopLeftPixel[3] = 1.0f;
+        _recalculateTopLeft = false;
+    }
+
+    return _linearizedTopLeftPixel;
+}
+
+const float *Screen::linearizedCameraPos() {
+    if(_recalculateCameraPos) {
+        _linearizedCameraPos[0] = _cameraPos.x;
+        _linearizedCameraPos[1] = _cameraPos.y;
+        _linearizedCameraPos[2] = _cameraPos.z;
+        _linearizedCameraPos[3] = 1.0f;
+        _recalculateCameraPos = false;
+    }
+
+    return _linearizedCameraPos;
+}
+
+const float *Screen::linearizedUpVector() {
+    if(_recalculateUpVector) {
+        _linearizedUpVector[0] = _up.x;
+        _linearizedUpVector[1] = _up.y;
+        _linearizedUpVector[2] = _up.z;
+        _linearizedUpVector[3] = 0.0f;
+
+        _recalculateUpVector = false;
+    }
+
+    return _linearizedUpVector;
+}
+
+const float *Screen::linearizedRightVector() {
+    if(_recalculateRightVector) {
+        _linearizedRightVector[0] = _right.x;
+        _linearizedRightVector[1] = _right.y;
+        _linearizedRightVector[2] = _right.z;
+        _linearizedRightVector[3] = 0.0f;
+
+        _recalculateRightVector = false;
+    }
+
+    return _linearizedRightVector;
 }

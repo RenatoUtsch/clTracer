@@ -29,6 +29,7 @@
 #include "../error.hpp"
 #include "CodeGenerator.hpp"
 #include "OpenCL.h"
+#include <fstream>
 
 #ifndef CL_SOURCE_DIR // To be set by the compiler.
 #define CL_SOURCE_DIR
@@ -39,6 +40,7 @@
 
 struct Sampler::SamplerImpl {
     int width, height;
+    float pixelWidth, pixelHeight;
     cl_platform_id platform;
     cl_device_id device;
     cl_context context;
@@ -48,11 +50,14 @@ struct Sampler::SamplerImpl {
     cl_kernel sampleKernel; /// Raytracer entry point.
 
     cl_mem originBuffer;    /// Origin of the ray.
-    cl_mem directionBuffer; /// Direction of the rays.
+    cl_mem topLeftBuffer;   /// Top left pixel position.
+    cl_mem upBuffer;        /// Up vector
+    cl_mem rightBuffer;     /// Right vector
     cl_mem outputImage;     /// Output image.
 
     /// Sets up OpenCL with the given program source code.
-    SamplerImpl(const char *source, long sourceSize, int _width, int _height);
+    SamplerImpl(const char *source, long sourceSize, int _width, int _height,
+            float _pixelWidth, float _pixelHeight);
 
     ~SamplerImpl();
 
@@ -60,14 +65,17 @@ struct Sampler::SamplerImpl {
     std::shared_ptr<PPMImage> genOutputImage();
 
     /// Updates the sample kernel arguments.
-    void updateSampleArgs(const Screen &screen);
+    void updateSampleArgs(Screen &screen);
 
     /// Runs the sample kernel.
     void runSample();
 };
 
 Sampler::SamplerImpl::SamplerImpl(const char *source, long sourceSize,
-        int _width, int _height) : width(_width), height(_height) {
+        int _width, int _height, float _pixelWidth, float _pixelHeight)
+        : width(_width), height(_height)
+        , pixelWidth(_pixelWidth), pixelHeight(_pixelHeight)
+{
     int err;
 
     err = clGetPlatformIDs(1, &platform, NULL);
@@ -96,37 +104,59 @@ Sampler::SamplerImpl::SamplerImpl(const char *source, long sourceSize,
     stop_if(err != CL_SUCCESS, "failed to create the sample kernel origin position. "
             "Error %d.", err);
 
-    directionBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY,
-            width * height * 4 * sizeof(float), NULL, &err);
-    stop_if(err != CL_SUCCESS, "failed to create the sample kernel input directions. "
+    topLeftBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY, 4 * sizeof(float),
+            NULL, &err);
+    stop_if(err != CL_SUCCESS, "failed to create the sample kernel top left position. "
             "Error %d.", err);
 
-    cl_image_format rgba_format;
-    rgba_format.image_channel_order = CL_RGBA;
-    rgba_format.image_channel_data_type = CL_UNSIGNED_INT8;
+    upBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY, 4 * sizeof(float),
+            NULL, &err);
+    stop_if(err != CL_SUCCESS, "failed to create the sample kernel up vector. "
+            "Error %d.", err);
+
+    rightBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY, 4 * sizeof(float),
+            NULL, &err);
+    stop_if(err != CL_SUCCESS, "failed to create the sample kernel right vector. "
+            "Error %d.", err);
+
+    cl_image_format rgbaFormat;
+    rgbaFormat.image_channel_order = CL_RGBA;
+    rgbaFormat.image_channel_data_type = CL_UNSIGNED_INT8;
 
     outputImage = clCreateImage2D(context, CL_MEM_WRITE_ONLY,
-            &rgba_format, width, height, 0, NULL, &err);
+            &rgbaFormat, width, height, 0, NULL, &err);
     stop_if(err != CL_SUCCESS,
             "failed to create the sample kernel output image. Error %d.", err);
     stop_if(!outputImage, "SHIT");
 
-    /*
     err = clSetKernelArg(sampleKernel, 0, sizeof(originBuffer), &originBuffer);
-    stop_if(err < 0, "failed to set first kernel argument.");
+    stop_if(err < 0, "failed to set first kernel argument. Error %d.", err);
 
-    err = clSetKernelArg(sampleKernel, 1, sizeof(directionBuffer),
-            &directionBuffer);
-    stop_if(err < 0, "failed to set second kernel argument.");
-    */
+    err = clSetKernelArg(sampleKernel, 1, sizeof(topLeftBuffer), &topLeftBuffer);
+    stop_if(err < 0, "failed to set second kernel argument. Error %d.", err);
 
-    err = clSetKernelArg(sampleKernel, 0, sizeof(outputImage), &outputImage);
-    stop_if(err != CL_SUCCESS, "failed to set third kernel argument. Error %d.", err);
+    err = clSetKernelArg(sampleKernel, 2, sizeof(upBuffer), &upBuffer);
+    stop_if(err < 0, "failed to set third kernel argument. Error %d.", err);
+
+    err = clSetKernelArg(sampleKernel, 3, sizeof(rightBuffer), &rightBuffer);
+    stop_if(err < 0, "failed to set fourth kernel argument. Error %d.", err);
+
+    err = clSetKernelArg(sampleKernel, 4, sizeof(float), &pixelWidth);
+    stop_if(err < 0, "failed to set fifth kernel argument. Error %d.", err);
+
+    err = clSetKernelArg(sampleKernel, 5, sizeof(float), &pixelHeight);
+    stop_if(err < 0, "failed to set sixth kernel argument. Error %d.", err);
+
+    err = clSetKernelArg(sampleKernel, 6, sizeof(outputImage), &outputImage);
+    stop_if(err != CL_SUCCESS, "failed to set seventh kernel argument. Error %d.",
+            err);
 }
 
 Sampler::SamplerImpl::~SamplerImpl() {
     clReleaseMemObject(outputImage);
-    clReleaseMemObject(directionBuffer);
+    clReleaseMemObject(rightBuffer);
+    clReleaseMemObject(upBuffer);
+    clReleaseMemObject(topLeftBuffer);
     clReleaseMemObject(originBuffer);
     clReleaseKernel(sampleKernel);
     clReleaseCommandQueue(queue);
@@ -135,7 +165,8 @@ Sampler::SamplerImpl::~SamplerImpl() {
     clReleaseDevice(device);
 }
 
-Sampler::Sampler(const World &world, int width, int height) {
+Sampler::Sampler(const World &world, int width, int height, float pixelWidth,
+        float pixelHeight) {
     int err;
     CodeGenerator generator;
 
@@ -160,22 +191,80 @@ Sampler::Sampler(const World &world, int width, int height) {
     auto source = genSource + samplerSource;
 
     delete [] samplerSource;
-    std::cerr << source;
+
+    // Save the source to a file.
+    std::ofstream out("source.cl");
+    stop_if(!out.is_open(), "Failed to open output kernel file.");
+    out << source;
+    out.close();
 
     // Set up OpenCL.
-    _impl = new SamplerImpl(source.c_str(), source.size(), width, height);
+    _impl = new SamplerImpl(source.c_str(), source.size(), width, height,
+            pixelWidth, pixelHeight);
 }
 
 Sampler::~Sampler() {
     delete _impl;
 }
 
-void Sampler::SamplerImpl::updateSampleArgs(const Screen &screen) {
+void Sampler::SamplerImpl::updateSampleArgs(Screen &screen) {
+    int err;
 
+    if(screen.linearizedCameraPosNeedsUpdate()) {
+        const float *vector = screen.linearizedCameraPos();
+
+        float *mapped = (float *) clEnqueueMapBuffer(queue, originBuffer,
+                CL_TRUE, CL_MAP_WRITE, 0, screen.LinearizedVectorSize, 0, NULL,
+                NULL, &err);
+        stop_if(err != CL_SUCCESS, "failed to map first kernel argument.");
+
+        memcpy(mapped, vector, screen.LinearizedVectorSize);
+
+        clEnqueueUnmapMemObject(queue, originBuffer, mapped, 0, NULL, NULL);
+    }
+
+    if(screen.linearizedTopLeftPixelNeedsUpdate()) {
+        const float *vector = screen.linearizedTopLeftPixel();
+
+        float *mapped = (float *) clEnqueueMapBuffer(queue, topLeftBuffer,
+                CL_TRUE, CL_MAP_WRITE, 0, screen.LinearizedVectorSize, 0, NULL,
+                NULL, &err);
+        stop_if(err != CL_SUCCESS, "failed to map second kernel argument.");
+
+        memcpy(mapped, vector, screen.LinearizedVectorSize);
+
+        clEnqueueUnmapMemObject(queue, topLeftBuffer, mapped, 0, NULL, NULL);
+    }
+
+    if(screen.linearizedUpVectorNeedsUpdate()) {
+        const float *vector = screen.linearizedUpVector();
+
+        float *mapped = (float *) clEnqueueMapBuffer(queue, upBuffer,
+                CL_TRUE, CL_MAP_WRITE, 0, screen.LinearizedVectorSize, 0, NULL,
+                NULL, &err);
+        stop_if(err != CL_SUCCESS, "failed to map third kernel argument.");
+
+        memcpy(mapped, vector, screen.LinearizedVectorSize);
+
+        clEnqueueUnmapMemObject(queue, upBuffer, mapped, 0, NULL, NULL);
+    }
+
+    if(screen.linearizedRightVectorNeedsUpdate()) {
+        const float *vector = screen.linearizedRightVector();
+
+        float *mapped = (float *) clEnqueueMapBuffer(queue, rightBuffer,
+                CL_TRUE, CL_MAP_WRITE, 0, screen.LinearizedVectorSize, 0, NULL,
+                NULL, &err);
+        stop_if(err != CL_SUCCESS, "failed to map fourth kernel argument.");
+
+        memcpy(mapped, vector, screen.LinearizedVectorSize);
+
+        clEnqueueUnmapMemObject(queue, rightBuffer, mapped, 0, NULL, NULL);
+    }
 }
 
 void Sampler::SamplerImpl::runSample() {
-    size_t work_size[2] = {(size_t) height, (size_t) width};
+    size_t work_size[2] = {(size_t) width, (size_t) height};
     size_t global_offset[2] = {0, 0};
 
     int err = clEnqueueNDRangeKernel(queue, sampleKernel, 2, global_offset,
@@ -190,26 +279,22 @@ std::shared_ptr<PPMImage> Sampler::SamplerImpl::genOutputImage() {
     clFinish(queue);
 
     // Map the entire output image.
-    size_t row_pitch;
+    size_t rowPitch = 0;
     size_t origin[3] = {0, 0, 0};
     size_t region[3] = {(size_t) width, (size_t) height, 1};
     uint8_t *output = (uint8_t *) clEnqueueMapImage(queue, outputImage,
-            CL_TRUE, CL_MAP_READ, origin, region, &row_pitch, NULL, 0, NULL,
+            CL_TRUE, CL_MAP_READ, origin, region, &rowPitch, NULL, 0, NULL,
             NULL, &err);
     stop_if(err != CL_SUCCESS, "failed to map output kernel image. Error %d.", err);
 
-    for(int i = 0; i < 5; ++i)
-        printf("%u %u %u %u\n", output[i*4], output[i*4 + 1], output[i*4 + 2],
-                output[i*4 + 3]);
-
-    auto image = std::make_shared<PPMImage>((uint8_t *)output, width, height);
+    auto image = std::make_shared<PPMImage>(output, width, height);
 
     clEnqueueUnmapMemObject(queue, outputImage, output, 0, NULL, NULL);
 
     return image;
 }
 
-std::shared_ptr<PPMImage> Sampler::sample(const Screen &screen) {
+std::shared_ptr<PPMImage> Sampler::sample(Screen &screen) {
     _impl->updateSampleArgs(screen);
     _impl->runSample();
     return _impl->genOutputImage();

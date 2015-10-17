@@ -275,6 +275,8 @@ std::string CodeGenerator::writeAttenuation(const Attenuation &attenuation) {
 std::string CodeGenerator::generateCode(const World &world) {
     std::stringstream code;
 
+    code << "// Generated code. Do not change, as these changes will be lost.\n\n";
+
     code << generateStructures(world)
         << generateLights(world)
         << generateSolidTextures(world)

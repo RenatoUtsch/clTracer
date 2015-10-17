@@ -48,15 +48,21 @@ class Screen {
     int _heightInPixels;        /// Height of the screen in pixels.
 
     // Data that may be recalculated when being accessed.
-    float *_linearizedPixelPositions;   /// Array with all the pixel positions.
+    float *_linearizedTopLeftPixel;     /// Array with the top left pixel.
     float *_linearizedCameraPos;        /// Array with the camera position.
+    float *_linearizedUpVector;         /// Array with the up vector.
+    float *_linearizedRightVector;      /// Array with the right vector.
+    bool _recalculateTopLeft;   /// If needs to recalculate the position of the
+                                /// top left pixel before linearizedTopLeftPixel().
+    bool _recalculateCameraPos; /// If needs to recalculate the camera position
+                                /// before linearizedCameraPos()
+    bool _recalculateUpVector;  /// If needs to recalculate the up vector before
+                                /// linearizedUpVector();
+    bool _recalculateRightVector; /// If needs to recalculate the right vector
+                                /// before linearizedRightVector();
 
     // Data used for internal calculations.
     float _fovy;                /// Field of view, in degrees.
-    bool _recalculatePixels;    /// If needs to recalculate the pixel positions
-                                /// before linearizedPixelPositions() returns.
-    bool _recalculateCameraPos; /// If needs to recalculate the camera position
-                                /// before linearizedCameraPos()
 
 public:
     /**
@@ -195,21 +201,58 @@ public:
      */
     void rotateDown(float degrees);
 
+    /// Size of a linearized vector.
+    const size_t LinearizedVectorSize = 4 * sizeof(float);
+
     /**
-     * Returns the linearized array with the position of the center of all
-     * pixels. Each pixel uses 4 floats.
-     * The size of the array (in bytes, divide by 4 to obtain the number of
-     * pixels) is returned in the parameter.
-     * Expensive call, because recalculates everything if the camera has moved
-     * between the last call and the new one.
+     * If needs to update the top left pixel position.
      */
-    const float *linearizedPixelPositions(size_t *size);
+    inline bool linearizedTopLeftPixelNeedsUpdate() {
+        return _recalculateTopLeft;
+    }
+
+    /**
+     * If needs to update the linearized camera pos.
+     */
+    inline bool linearizedCameraPosNeedsUpdate() {
+        return _recalculateCameraPos;
+    }
+
+    /**
+     * If needs to update the linearized up vector.
+     */
+    inline bool linearizedUpVectorNeedsUpdate() {
+        return _recalculateUpVector;
+    }
+
+    /**
+     * If needs to update teh linearized right vector.
+     */
+    inline bool linearizedRightVectorNeedsUpdate() {
+        return _recalculateRightVector;
+    }
+
+    /**
+     * Returns the linearized array with the position of the top left pixel,
+     * using 4 floats.
+     */
+    const float *linearizedTopLeftPixel();
 
     /**
      * Returns the linearized array with the linearized position of the camera,
      * using 4 floats.
      */
     const float *linearizedCameraPos();
+
+    /**
+     * Returns the linearized array with the up vector, using 4 floats.
+     */
+    const float *linearizedUpVector();
+
+    /**
+     * Returns the linearized array with the right vector, using 4 floats.
+     */
+    const float *linearizedRightVector();
 };
 
 #endif // !SCREEN_HPP

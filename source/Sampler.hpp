@@ -53,8 +53,11 @@ public:
      * constant through all the execution of the sampler.
      * @param width Width of the generated image.
      * @param height Height of the generated image.
+     * @param pixelWidth Width of a pixel.
+     * @param pixelHeight Height of a pixel.
      */
-    Sampler(const World &world, int width, int height);
+    Sampler(const World &world, int width, int height, float pixelWidth,
+            float pixelHeight);
 
     ~Sampler();
 
@@ -63,7 +66,7 @@ public:
      * 32bit RGBA format from it.
      * This is the actual raytracing call.
      */
-    std::shared_ptr<PPMImage> sample(const Screen &screen);
+    std::shared_ptr<PPMImage> sample(Screen &screen);
 };
 
 #endif // !SAMPLER_HPP

@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
     Screen screen {input, width, height};
     World world {input};
 
-    Sampler sampler {world, width, height};
+    Sampler sampler {world, width, height, screen.pixelWidth(), screen.pixelHeight()};
     auto image = sampler.sample(screen);
 
     image->writeTo(output);
