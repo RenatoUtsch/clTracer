@@ -30,13 +30,13 @@
 #include <fstream>
 #include <string>
 
-World::World(const char *aInput) {
-    std::ifstream in(aInput);
+World::World(const std::string &aInput) {
+    std::ifstream in(aInput.c_str());
     stop_if(!in.is_open(), "failed to open input file.");
 
     ignoreCameraDescription(in);
     readLightDescription(in);
-    readTextureDescription(in);
+    readTextureDescription(in, aInput.substr(0, aInput.rfind('/') + 1));
     readMaterialDescription(in);
     readObjectDescription(in);
 }
@@ -63,7 +63,7 @@ void World::readLightDescription(std::ifstream &in) {
     }
 }
 
-void World::readTextureDescription(std::ifstream &in) {
+void World::readTextureDescription(std::ifstream &in, const std::string &inputPath) {
     TextureInfo info;
     std::string type;
     int numTextures;
@@ -103,7 +103,7 @@ void World::readTextureDescription(std::ifstream &in) {
             std::string filename;
             in >> filename;
 
-            MapTexture map(filename.c_str());
+            MapTexture map((inputPath + filename).c_str());
             in >> map.p0.x >> map.p0.y >> map.p0.z >> map.p0.w;
             in >> map.p1.x >> map.p1.y >> map.p1.z >> map.p1.w;
 

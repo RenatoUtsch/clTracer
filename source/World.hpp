@@ -32,6 +32,7 @@
 #include "Color.hpp"
 #include "PPMImage.hpp"
 #include <fstream>
+#include <string>
 #include <vector>
 #include <cstdint>
 
@@ -139,7 +140,7 @@ class World {
     void readLightDescription(std::ifstream &in);
 
     /// Reads the texture description from the input.
-    void readTextureDescription(std::ifstream &in);
+    void readTextureDescription(std::ifstream &in, const std::string &inputPath);
 
     /// Reads the material description from the input.
     void readMaterialDescription(std::ifstream &in);
@@ -149,7 +150,7 @@ class World {
 
 public:
     /// Inits the world with the info from the input file.
-    World(const char *aInput);
+    World(const std::string &aInput);
 
     std::vector<Light> lights;                      /// Light data.
     std::vector<SolidTexture> solidTextures;        /// Solid texture data.

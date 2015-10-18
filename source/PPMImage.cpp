@@ -48,7 +48,7 @@ PPMImage::PPMImage(uint8_t *aImage, int aWidth, int aHeight)
 
 PPMImage::PPMImage(const char *filename) {
     std::ifstream in(filename);
-    stop_if(!in, "failed to open ppm file.");
+    stop_if(!in, "failed to open ppm file: %s", filename);
 
     std::string line;
     std::stringstream ss;

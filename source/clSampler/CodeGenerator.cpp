@@ -55,14 +55,14 @@ std::string CodeGenerator::generateStructures(const World &world) {
         "    float size;\n"
         "} CheckerTexture;\n"
         "\n"
-        "typedef struct MapTexture {\n"
+        /*"typedef struct MapTexture {\n"
         "    float4 p0;\n"
         "    float4 p1;\n"
         "    float4 *data;\n"
         "    int width;\n"
         "    int height;\n"
         "} MapTexture;\n"
-        "\n"
+        "\n"*/
         "typedef struct Material {\n"
         "    float ambientCoef;\n"
         "    float diffuseCoef;\n"
@@ -165,11 +165,12 @@ std::string CodeGenerator::generateMapTextures(const World &world) {
     std::stringstream code;
 
     if(!world.mapTextures.size()) return std::string();
-
+/*
     code << "#define numMapTextures " << world.mapTextures.size() << "\n\n"
         << "__constant MapTexture mapTextures[] = {\n";
 
     code << "};\n\n";
+    */
 
     return code.str();
 }
@@ -220,13 +221,27 @@ std::string CodeGenerator::generateSpheres(const World &world) {
 
 std::string CodeGenerator::generatePolyhedrons(const World &world) {
     std::stringstream code;
-    int faceIndex = 0;
+    size_t faceIndex = 0;
 
     code << "#define numPolyhedrons " << world.polyhedrons.size() << "\n\n";
 
     if(world.polyhedrons.size()) {
-        code << "__constant Polyhedron polyhedrons[] = {\n";
+        code << "__constant float4 polyhedronFaces[] = {\n";
 
+        size_t k = 0;
+        for(size_t i = 0; i < world.polyhedrons.size(); ++i) {
+            for(size_t j = 0; j < world.polyhedrons[i].faces.size(); ++j) {
+                code << "    " << writePlane(world.polyhedrons[i].faces[j]);
+                //if(k + 1 != faceIndex)
+                    code << ",";
+                code << "\n";
+            }
+            k += world.polyhedrons[i].faces.size();
+        }
+
+        code << "};\n\n";
+
+        code << "__constant Polyhedron polyhedrons[] = {\n";
         for(size_t i = 0; i < world.polyhedrons.size(); ++i) {
             code << "    " << writePolyhedron(world.polyhedrons[i], faceIndex);
             if(i != world.polyhedrons.size() - 1)
@@ -234,20 +249,6 @@ std::string CodeGenerator::generatePolyhedrons(const World &world) {
             code << "\n";
             faceIndex += world.polyhedrons[i].faces.size();
         }
-
-        code << "};\n\n";
-
-        code << "__constant float4 polyhedronFaces[] = {\n";
-
-        for(size_t i = 0; i < world.polyhedrons.size(); ++i) {
-            for(size_t j = 0; j < world.polyhedrons[i].faces.size(); ++j) {
-                code << "    " << writePlane(world.polyhedrons[i].faces[j]);
-                if(j != world.polyhedrons[i].faces.size() - 1)
-                    code << ",";
-                code << "\n";
-            }
-        }
-
         code << "};\n\n";
     }
     else {
