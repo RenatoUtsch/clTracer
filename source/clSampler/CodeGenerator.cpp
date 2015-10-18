@@ -31,15 +31,12 @@
 
 std::string CodeGenerator::generateStructures(const World &world) {
     return std::string(
-        "typedef struct Attenuation {\n"
-        "    float linear;\n"
-        "    float quadratic;\n"
-        "} Attenuation;\n"
-        "\n"
         "typedef struct Light {\n"
         "    float4 pos;\n"
         "    float4 color;\n"
-        "    Attenuation attenuation;\n"
+        "    float constantAtt;\n"
+        "    float linearAtt;\n"
+        "    float quadraticAtt;\n"
         "} Light;\n"
         "\n"
         "typedef enum TextureType {\n"
@@ -76,21 +73,21 @@ std::string CodeGenerator::generateStructures(const World &world) {
         "    float refractionRate;\n"
         "} Material;\n"
         "\n"
-        "typedef struct SphereObject {\n"
+        "typedef struct Sphere {\n"
         "    float4 center;\n"
         "    float radius;\n"
         "    TextureType textureType;\n"
         "    int textureID;\n"
         "    int materialID;\n"
-        "} SphereObject;\n"
+        "} Sphere;\n"
         "\n"
-        "typedef struct PolyhedronObject {\n"
-        "    int numFaces;\n"
-        "    float4 *faces;\n"
-        "    TextureType textureType;\n"
+        "typedef struct Polyhedron {\n"
         "    int textureID;\n"
         "    int materialID;\n"
-        "} PolyhedronObject;\n"
+        "    int numFaces;\n"
+        "    TextureType textureType;\n"
+        "    float4 faces[1];\n"
+        "} Polyhedron;\n"
         "\n"
     );
 }
@@ -114,31 +111,36 @@ std::string CodeGenerator::generateLights(const World &world) {
 std::string CodeGenerator::generateSolidTextures(const World &world) {
     std::stringstream code;
 
-    if(!world.solidTextures.size()) return std::string();
+    if(world.solidTextures.size()) {
+        code << "__constant SolidTexture solidTextures[] = {\n";
 
-    code << "__constant int numSolidTextures = " << world.solidTextures.size()
-        << ";\n"
-        << "__constant SolidTexture solidTextures[] = {\n";
+        for(size_t i = 0; i < world.solidTextures.size(); ++i)
+            code << "    " << writeSolidTexture(world.solidTextures[i]) << ",\n";
 
-    for(size_t i = 0; i < world.solidTextures.size(); ++i)
-        code << "    " << writeSolidTexture(world.solidTextures[i]) << ",\n";
-
-    code << "};\n\n";
+        code << "};\n\n";
+    }
+    else {
+        code << "__constant SolidTexture solidTextures[1]; // Dummy.\n";
+    }
 
     return code.str();
 }
 
 std::string CodeGenerator::generateCheckerTextures(const World &world) {
     std::stringstream code;
+/*
+    if(world.checkerTextures.size()) {
+        code << "__constant CheckerTexture checkerTextures[] = {\n";
 
-    if(!world.checkerTextures.size()) return std::string();
+        for(size_t i = 0; i < world.checkerTextures.size(); ++i)
+            code << "    " << writeCheckerTexture(world.checkerTextures[i]) << ",\n";
 
-    code << "__constant int numCheckerTextures = " << world.checkerTextures.size()
-        << ";\n"
-        << "__constant CheckerTexture checkerTextures[] = {\n";
-
-    code << "};\n\n";
-
+        code << "};\n\n";
+    }
+    else {
+        code << "__constant CheckerTexture checkerTextures[1]; // Dummy.\n";
+    }
+*/
     return code.str();
 }
 
@@ -161,9 +163,7 @@ std::string CodeGenerator::generateMaterials(const World &world) {
 
     stop_if(!world.materials.size(), "Input needs at least one material.");
 
-    code << "__constant int numMaterials = " << world.materials.size()
-        << ";\n"
-        << "__constant Material materials[] = {\n";
+    code << "__constant Material materials[] = {\n";
 
     for(size_t i = 0; i < world.materials.size(); ++i)
         code << "    " << writeMaterial(world.materials[i]) << ",\n";
@@ -173,28 +173,44 @@ std::string CodeGenerator::generateMaterials(const World &world) {
     return code.str();
 }
 
-std::string CodeGenerator::generateSphereObjects(const World &world) {
+std::string CodeGenerator::generateSpheres(const World &world) {
     std::stringstream code;
 
-    if(!world.sphereObjects.size()) return std::string();
+    code << "__constant int numSpheres = " << world.spheres.size() << ";\n";
 
-    code << "__constant int numSphereObjects = " << world.sphereObjects.size()
-        << ";\n"
-        << "__constant SphereObject sphereObjects[] = {\n";
+    if(world.spheres.size()) {
+        code << "__constant Sphere spheres[] = {\n";
 
-    for(size_t i = 0; i < world.sphereObjects.size(); ++i)
-        code << "    "<< writeSphereObject(world.sphereObjects[i]) << ",\n";
+        for(size_t i = 0; i < world.spheres.size(); ++i)
+            code << "    " << writeSphere(world.spheres[i]) << ",\n";
 
-    code << "};\n\n";
+        code << "};\n\n";
+    }
+    else {
+        code << "__constant Sphere spheres[1]; // Dummy.\n";
+    }
 
     return code.str();
 }
 
-std::string CodeGenerator::generatePolyhedronObjects(const World &world) {
+std::string CodeGenerator::generatePolyhedrons(const World &world) {
     std::stringstream code;
+/*
+    code << "__constant int numPolyhedrons = " << world.polyhedrons.size()
+        << ";\n";
 
-    if(!world.polyhedronObjects.size()) return std::string();
+    if(world.polyhedrons.size()) {
+        code << "__constant Polyhedron polyhedrons[] = {\n";
 
+        for(size_t i = 0; i < world.polyhedrons.size(); ++i)
+            code << "    " << writePolyhedron(world.polyhedrons[i]) << ",\n";
+
+        code << "};\n\n";
+    }
+    else {
+        code << "__constant Polyhedron polyhedrons[1]; // Dummy.\n";
+    }
+*/
     return code.str();
 }
 
@@ -203,8 +219,10 @@ std::string CodeGenerator::writeLight(const Light &light) {
 
     code << "{ "
         << writePoint(light.pos) << ", "
-        << writeColor(light.color) << ", "
-        << writeAttenuation(light.attenuation)
+        << writeColor(light.color)
+        << ", (float) " << light.constantAtt
+        << ", (float) " << light.linearAtt
+        << ", (float) " << light.quadraticAtt
         << " }";
 
     return code.str();
@@ -214,6 +232,18 @@ std::string CodeGenerator::writeSolidTexture(const SolidTexture &tex) {
     std::stringstream code;
 
     code << "{ " << writeColor(tex.color) << " }";
+
+    return code.str();
+}
+
+std::string CodeGenerator::writeCheckerTexture(const CheckerTexture &tex) {
+    std::stringstream code;
+
+    code << "{ "
+        << writeColor(tex.color1) << ", "
+        << writeColor(tex.color2) << ", "
+        << "(float) " << tex.size
+        <<  " }";
 
     return code.str();
 }
@@ -233,7 +263,7 @@ std::string CodeGenerator::writeMaterial(const Material &material) {
     return code.str();
 }
 
-std::string CodeGenerator::writeSphereObject(const SphereObject &sphere) {
+std::string CodeGenerator::writeSphere(const Sphere &sphere) {
     std::stringstream code;
 
     code << "{ "
@@ -241,7 +271,27 @@ std::string CodeGenerator::writeSphereObject(const SphereObject &sphere) {
         << "(float) " << sphere.radius << ", "
         << "(TextureType) " << sphere.textureType << ", "
         << "(int) " << sphere.textureID << ", "
-        << "(int) " << sphere.materialID
+        << "(int) " << sphere.materialID << ", "
+        << " }";
+
+    return code.str();
+}
+
+std::string CodeGenerator::writePolyhedron(const Polyhedron &polyhedron) {
+    std::stringstream code;
+
+    code << "{ "
+        << "(int) " << polyhedron.textureID << ", "
+        << "(int) " << polyhedron.materialID << ", "
+        << "(int) " << polyhedron.faces.size() << ", "
+        << "(TextureType) " << polyhedron.textureType << ", "
+        << "{ ";
+
+    for(size_t i = 0; i < polyhedron.faces.size(); ++i) {
+        code << writePlane(polyhedron.faces[i]) << ", ";
+    }
+
+    code << "}"
         << " }";
 
     return code.str();
@@ -250,7 +300,15 @@ std::string CodeGenerator::writeSphereObject(const SphereObject &sphere) {
 std::string CodeGenerator::writePoint(const Point &point) {
     std::stringstream code;
     code << "(float4) (" << point.x << ", " << point.y << ", " << point.z
-        << ", "<< point.w << ")";
+        << ", " << point.w << ")";
+
+    return code.str();
+}
+
+std::string CodeGenerator::writePlane(const Plane &plane) {
+    std::stringstream code;
+    code << "(float4) (" << plane.a << ", " << plane.b << ", " << plane.c
+        << ", " << plane.d << ")";
 
     return code.str();
 }
@@ -259,15 +317,6 @@ std::string CodeGenerator::writeColor(const Color &color) {
     std::stringstream code;
     code << "(float4) (" << color.r << ", " << color.g << ", " << color.b
         << ", 1.0f)";
-
-    return code.str();
-}
-
-std::string CodeGenerator::writeAttenuation(const Attenuation &attenuation) {
-    std::stringstream code;
-    code << "{ (float) " << attenuation.linear
-        << ", (float) " << attenuation.quadratic
-        << " }";
 
     return code.str();
 }
@@ -283,8 +332,8 @@ std::string CodeGenerator::generateCode(const World &world) {
         << generateCheckerTextures(world)
         << generateMapTextures(world)
         << generateMaterials(world)
-        << generateSphereObjects(world)
-        << generatePolyhedronObjects(world);
+        << generateSpheres(world)
+        << generatePolyhedrons(world);
 
     return code.str();
 }

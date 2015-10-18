@@ -54,10 +54,10 @@ class CodeGenerator {
     std::string generateMaterials(const World &world);
 
     /// Generates the sphere objects.
-    std::string generateSphereObjects(const World &world);
+    std::string generateSpheres(const World &world);
 
     /// Generates the polyhedron objects.
-    std::string generatePolyhedronObjects(const World &world);
+    std::string generatePolyhedrons(const World &world);
 
     /// Writes a light structure initialization code.
     std::string writeLight(const Light &light);
@@ -65,20 +65,26 @@ class CodeGenerator {
     /// Writes a solid texture.
     std::string writeSolidTexture(const SolidTexture &tex);
 
+    /// Writes a checker texture.
+    std::string writeCheckerTexture(const CheckerTexture &tex);
+
     /// Writes a material.
     std::string writeMaterial(const Material &material);
 
     /// Writes a sphere object.
-    std::string writeSphereObject(const SphereObject &sphere);
+    std::string writeSphere(const Sphere &sphere);
+
+    /// Writes a polyhedron object.
+    std::string writePolyhedron(const Polyhedron &polyhedron);
 
     /// Writes a point structure.
     std::string writePoint(const Point &point);
 
+    /// Writes a plane structure.
+    std::string writePlane(const Plane &plane);
+
     /// Writes a color structure.
     std::string writeColor(const Color &color);
-
-    /// Writes a attenuation structure.
-    std::string writeAttenuation(const Attenuation &attenuation);
 
 public:
     /// Generates code about the given world and returns it.

@@ -52,17 +52,12 @@ void World::ignoreCameraDescription(std::ifstream &in) {
 void World::readLightDescription(std::ifstream &in) {
     Light light;
     int numLights;
-    float constAtt;
 
     in >> numLights;
     for(int i = 0; i < numLights; ++i) {
         in >> light.pos.x >> light.pos.y >> light.pos.z;
         in >> light.color.r >> light.color.g >> light.color.b;
-        in >> constAtt >> light.attenuation.linear
-            >> light.attenuation.quadratic;
-
-        // Already calculate the constant attenuation.
-        light.color *= constAtt;
+        in >> light.constantAtt >> light.linearAtt >> light.quadraticAtt;
 
         lights.push_back(light);
     }
@@ -145,17 +140,17 @@ void World::readObjectDescription(std::ifstream &in) {
         in >> type;
 
         if(type == "sphere") {
-            SphereObject obj;
+            Sphere obj;
             obj.textureType = _textureInfos[rawTextureID].type;
             obj.textureID = _textureInfos[rawTextureID].id;
             obj.materialID = materialID;
 
             in >> obj.center.x >> obj.center.y >> obj.center.z >> obj.radius;
 
-            sphereObjects.push_back(obj);
+            spheres.push_back(obj);
         }
         else if(type == "polyhedron") {
-            PolyhedronObject obj;
+            Polyhedron obj;
             Plane plane;
             int numFaces;
 
@@ -169,7 +164,7 @@ void World::readObjectDescription(std::ifstream &in) {
                 obj.faces.push_back(plane);
             }
 
-            polyhedronObjects.push_back(obj);
+            polyhedrons.push_back(obj);
         }
         else {
             stop_if(true, "invalid object (%s).", type.c_str());

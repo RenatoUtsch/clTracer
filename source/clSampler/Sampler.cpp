@@ -121,7 +121,7 @@ Sampler::SamplerImpl::SamplerImpl(const char *source, long sourceSize,
 
     cl_image_format rgbaFormat;
     rgbaFormat.image_channel_order = CL_RGBA;
-    rgbaFormat.image_channel_data_type = CL_UNSIGNED_INT8;
+    rgbaFormat.image_channel_data_type = CL_UNORM_INT8;
 
     outputImage = clCreateImage2D(context, CL_MEM_WRITE_ONLY,
             &rgbaFormat, width, height, 0, NULL, &err);
@@ -287,6 +287,7 @@ std::shared_ptr<PPMImage> Sampler::SamplerImpl::genOutputImage() {
             NULL, &err);
     stop_if(err != CL_SUCCESS, "failed to map output kernel image. Error %d.", err);
 
+    printf("%u %u %u\n", output[0], output[1], output[2]);
     auto image = std::make_shared<PPMImage>(output, width, height);
 
     clEnqueueUnmapMemObject(queue, outputImage, output, 0, NULL, NULL);

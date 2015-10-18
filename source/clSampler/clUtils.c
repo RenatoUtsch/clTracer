@@ -81,7 +81,7 @@ cl_program cluBuildProgram(cl_context context, cl_device_id device,
             return NULL;
         }
 
-        fprintf(stderr, "OpenCL Kernel compilation failed:\n%s", programLog);
+        fprintf(stderr, "OpenCL Kernel compilation failed:\n%s\n", programLog);
 
         free(programLog);
         *err = -1;

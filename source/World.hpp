@@ -36,20 +36,14 @@
 #include <cstdint>
 
 /**
- * This struct represents the attenuation.
- */
-struct Attenuation {
-    float linear;
-    float quadratic;
-};
-
-/**
  * This struct represents a single light.
  */
 struct Light {
-    Point pos;                  /// Position of the light.
-    Color color;                /// Color of the light.
-    Attenuation attenuation;    /// Attenuation of the light.
+    Point pos;              /// Position of the light.
+    Color color;            /// Color of the light.
+    float constantAtt;      /// Constant attenuation.
+    float linearAtt;        /// Linear attenuation.
+    float quadraticAtt;     /// Quadratic attenuation.
 };
 
 /// Texture types.
@@ -103,7 +97,7 @@ struct Material {
 /**
  * Represents a sphere object.
  */
-struct SphereObject {
+struct Sphere {
     Point center;               /// Center of the sphere.
     float radius;               /// Radius of the sphere.
     TextureType textureType;    /// Texture type.
@@ -114,7 +108,7 @@ struct SphereObject {
 /**
  * Represents a polyhedron object.
  */
-struct PolyhedronObject {
+struct Polyhedron {
     std::vector<Plane> faces;   /// Faces of the object.
     TextureType textureType;    /// Texture type of all the faces.
     int textureID;              /// ID of the texture of all the faces.
@@ -157,13 +151,13 @@ public:
     /// Inits the world with the info from the input file.
     World(const char *aInput);
 
-    std::vector<Light> lights;                          /// Light data.
-    std::vector<SolidTexture> solidTextures;            /// Solid texture data.
-    std::vector<CheckerTexture> checkerTextures;        /// Checker texture data.
-    std::vector<MapTexture> mapTextures;                /// Map texture data.
-    std::vector<Material> materials;                    /// Material data.
-    std::vector<SphereObject> sphereObjects;            /// Sphere objects.
-    std::vector<PolyhedronObject> polyhedronObjects;    /// Polyhedron objects.
+    std::vector<Light> lights;                      /// Light data.
+    std::vector<SolidTexture> solidTextures;        /// Solid texture data.
+    std::vector<CheckerTexture> checkerTextures;    /// Checker texture data.
+    std::vector<MapTexture> mapTextures;            /// Map texture data.
+    std::vector<Material> materials;                /// Material data.
+    std::vector<Sphere> spheres;                    /// Sphere objects.
+    std::vector<Polyhedron> polyhedrons;            /// Polyhedron objects.
 };
 
 #endif // !WORLD_HPP
