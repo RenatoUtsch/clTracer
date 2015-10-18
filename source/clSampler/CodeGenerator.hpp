@@ -75,7 +75,7 @@ class CodeGenerator {
     std::string writeSphere(const Sphere &sphere);
 
     /// Writes a polyhedron object.
-    std::string writePolyhedron(const Polyhedron &polyhedron);
+    std::string writePolyhedron(const Polyhedron &polyhedron, int faceIndex);
 
     /// Writes a point structure.
     std::string writePoint(const Point &point);
@@ -85,6 +85,9 @@ class CodeGenerator {
 
     /// Writes a color structure.
     std::string writeColor(const Color &color);
+
+    /// Writes a float.
+    std::string writeFloat(float val);
 
 public:
     /// Generates code about the given world and returns it.

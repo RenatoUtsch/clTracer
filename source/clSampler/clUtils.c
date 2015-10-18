@@ -61,7 +61,7 @@ cl_program cluBuildProgram(cl_context context, cl_device_id device,
     if(*err < 0)
         return NULL;
 
-    *err = clBuildProgram(program, 0, NULL, NULL, NULL, NULL);
+    *err = clBuildProgram(program, 0, NULL, "-Werror", NULL, NULL);
     if(*err < 0) {
         size_t logSize;
 
