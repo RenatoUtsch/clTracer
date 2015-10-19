@@ -165,7 +165,6 @@ std::string CodeGenerator::generateMapTextures(const World &world) {
     std::stringstream code;
     int texIndex = 0;
 
-    if(!world.mapTextures.size()) return std::string();
     code << "#define numMapTextures " << world.mapTextures.size() << "\n\n";
 
     if(world.mapTextures.size()) {

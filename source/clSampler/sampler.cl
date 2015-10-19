@@ -147,6 +147,7 @@ float4 getReflectionDirection(float4 dir, float4 normal);
 bool getTransmissionDirection(float refrRate, float4 dir, float4 normal,
         float4 *transDir);
 
+/* Stack functions. */
 void stackInit(Stack *stack);
 State *stackTop(Stack *stack);
 void stackPush(Stack *stack);
@@ -421,14 +422,15 @@ bool getTransmissionDirection(float refrRate, float4 dir, float4 normal,
     float4 invDir = -1.0f * dir;
     float c1 = dot(invDir, normal);
     float c2 = 1.0f - pow(refrRate, 2) * (1.0f - pow(c1, 2));
+    float marreta = 3.0f;
 
     if(c2 < -FLT_EPSILON) { // Total internal reflection.
         *transDir = normalize((2 * normal * c1) - invDir);
         return true;
     }
     else if(c2 > FLT_EPSILON) { // Refraction.
-        *transDir = normalize(normal * (refrRate * c1 - sqrt(c2))
-                + dir * refrRate);
+        c2 = sqrt(c2 + marreta); // Marretagem.
+        *transDir = normalize(normal * (refrRate * c1 - c2) + dir * refrRate);
         return true;
     }
     else { // Parallel ray.
@@ -537,7 +539,7 @@ float4 runSample(float4 *argOrigin, float4 *argDir) {
     Stack stack; // Recursion stack.
     RetStack retStack; // Return stack.
     State *t; // Top state.
-    //State *newT; // New top state.
+    State *newT; // New top state.
     float4 *r; // Return state.
 
     stackInit(&stack);
@@ -552,8 +554,8 @@ float4 runSample(float4 *argOrigin, float4 *argDir) {
         t = stackTop(&stack);
         switch(t->stage) {
             case 0: goto Stage0;
-            //case 1: goto Stage1;
-            //case 2: goto Stage2;
+            case 1: goto Stage1;
+            case 2: goto Stage2;
         }
 
 Stage0:
@@ -575,7 +577,7 @@ Stage0:
         calculateLocalColor(t->dir, t->iType, t->id, t->intersection, t->normal,
                 &materials[t->materialID], &t->ambientDiffuseColor,
                 &t->specularColor);
-/*
+
         t->reflectionColor = (float4) (0.0f);
         t->transmissionColor = (float4) (0.0f);
         if(t->depth > 0) {
@@ -592,6 +594,7 @@ Stage0:
 Stage1:
             retStackPop(&retStack);
             t->reflectionColor = *retStackTop(&retStack);
+            t->reflectionColor *= materials[t->materialID].reflectionCoef;
 
             // If outside the object invert the refraction rate.
             float refrRate = materials[t->materialID].refractionRate;
@@ -612,15 +615,16 @@ Stage1:
 Stage2:
                 retStackPop(&retStack);
                 t->transmissionColor = *retStackTop(&retStack);
+                t->transmissionColor *= materials[t->materialID].transmissionCoef;
             }
         }
-*/
+
         // Calculate the final color.
         // Ambient and diffuse colors are multiplied, the others need a sum.
         float4 outColor = getTextureColor(t->textureType, t->textureID,
                 t->intersection);
         outColor *= t->ambientDiffuseColor;
-        outColor += t->specularColor;// + t->reflectionColor + t->transmissionColor;
+        outColor += t->specularColor + t->reflectionColor + t->transmissionColor;
 
         r = retStackTop(&retStack);
         *r = clamp(outColor, 0.0f, 1.0f);
