@@ -29,6 +29,7 @@
 #include "error.hpp"
 #include <fstream>
 #include <string>
+#include <limits>
 
 World::World(const std::string &aInput) {
     std::ifstream in(aInput.c_str());
