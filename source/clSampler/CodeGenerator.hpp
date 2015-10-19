@@ -68,6 +68,9 @@ class CodeGenerator {
     /// Writes a checker texture.
     std::string writeCheckerTexture(const CheckerTexture &tex);
 
+    /// Writes a map texture.
+    std::string writeMapTexture(const MapTexture &tex, int texIndex);
+
     /// Writes a material.
     std::string writeMaterial(const Material &material);
 

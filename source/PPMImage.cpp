@@ -35,13 +35,13 @@
 PPMImage::PPMImage(uint8_t *aImage, int aWidth, int aHeight)
         : _height(aHeight), _width(aWidth) {
 
-    _data.resize(_height);
+    data.resize(_height);
     for(int i = 0; i < _height; ++i) {
-        _data[i].resize(_width);
+        data[i].resize(_width);
 
         for(int j = 0; j < _width; ++j) {
             size_t pos = 4 * (_width * i + j);
-            _data[i][j].fromRGB(aImage[pos], aImage[pos + 1], aImage[pos + 2]);
+            data[i][j].fromRGB(aImage[pos], aImage[pos + 1], aImage[pos + 2]);
         }
     }
 }
@@ -70,16 +70,16 @@ PPMImage::PPMImage(const char *filename) {
             "0 < maxColor <= 255)");
 
     uint8_t r, g, b;
-    _data.resize(_height);
+    data.resize(_height);
     for(int i = 0; i < _height; ++i) {
-        _data[i].resize(_width);
+        data[i].resize(_width);
         for(int j = 0; j < _width; ++j) {
             in >> r >> g >> b;
             stop_if(!in.good(), "bad ppm file.");
 
-            _data[i][j].r = (float) r / maxColor;
-            _data[i][j].g = (float) g / maxColor;
-            _data[i][j].b = (float) b / maxColor;
+            data[i][j].r = (float) r / maxColor;
+            data[i][j].g = (float) g / maxColor;
+            data[i][j].b = (float) b / maxColor;
         }
     }
 }
@@ -97,7 +97,7 @@ void PPMImage::writeTo(const char *filename) {
     uint8_t r, g, b;
     for(int i = 0; i < _height; ++i) {
         for(int j = 0; j < _width; ++j) {
-            _data[i][j].toRGB(&r, &g, &b);
+            data[i][j].toRGB(&r, &g, &b);
             out << r << g << b;
         }
     }

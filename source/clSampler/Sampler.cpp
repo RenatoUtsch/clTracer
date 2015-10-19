@@ -31,12 +31,24 @@
 #include "OpenCL.h"
 #include <fstream>
 
+#define XSTR(s) #s
+#define STR(s) XSTR(s)
+
 #ifndef CL_SOURCE_DIR // To be set by the compiler.
 #define CL_SOURCE_DIR
 #endif
 
+// Maximum recursion depth.
+#define MAX_DEPTH 4
+
 // Where the sampler.cl file is.
 #define SAMPLER_CLSOURCE_PATH CL_SOURCE_DIR "sampler.cl"
+
+#ifdef __APPLE__ // Apple has really buggy GPU drivers.
+#   define SAMPLER_DEVICE_TYPE CL_DEVICE_TYPE_CPU
+#else
+#   define SAMPLER_DEVICE_TYPE CL_DEVICE_TYPE_GPU
+#endif
 
 struct Sampler::SamplerImpl {
     int width, height;
@@ -81,9 +93,8 @@ Sampler::SamplerImpl::SamplerImpl(const char *source, long sourceSize,
     err = clGetPlatformIDs(1, &platform, NULL);
     stop_if(err != CL_SUCCESS, "failed to find an OpenCL platform. Error %d.", err);
 
-    err = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 1,
-            &device, NULL);
-    stop_if(err != CL_SUCCESS, "failed to find a GPU. Error %d.", err);
+    err = clGetDeviceIDs(platform, SAMPLER_DEVICE_TYPE, 1, &device, NULL);
+    stop_if(err != CL_SUCCESS, "failed to find a device. Error %d.", err);
 
     context = clCreateContext(NULL, 1, &device, NULL, NULL,
             &err);
@@ -93,7 +104,8 @@ Sampler::SamplerImpl::SamplerImpl(const char *source, long sourceSize,
             &err);
     stop_if(err != CL_SUCCESS, "failed to create an OpenCL command queue. Error %d", err);
 
-    program = cluBuildProgram(context, device, source, sourceSize, &err);
+    program = cluBuildProgram(context, device, source, sourceSize,
+            "-Werror -DMAX_DEPTH=" STR(MAX_DEPTH), &err);
     stop_if(err < 0, "failed to compile the OpenCL kernel.");
 
     sampleKernel = clCreateKernel(program, "sample", &err);
@@ -266,7 +278,6 @@ void Sampler::SamplerImpl::updateSampleArgs(Screen &screen) {
 void Sampler::SamplerImpl::runSample() {
     size_t work_size[2] = {(size_t) width, (size_t) height};
     size_t global_offset[2] = {0, 0};
-
     int err = clEnqueueNDRangeKernel(queue, sampleKernel, 2, global_offset,
             work_size, NULL, 0, NULL, NULL);
     stop_if(err != CL_SUCCESS, "failed to enqueue kernel execution. Error %d.", err);
@@ -287,7 +298,6 @@ std::shared_ptr<PPMImage> Sampler::SamplerImpl::genOutputImage() {
             NULL, &err);
     stop_if(err != CL_SUCCESS, "failed to map output kernel image. Error %d.", err);
 
-    printf("%u %u %u\n", output[0], output[1], output[2]);
     auto image = std::make_shared<PPMImage>(output, width, height);
 
     clEnqueueUnmapMemObject(queue, outputImage, output, 0, NULL, NULL);

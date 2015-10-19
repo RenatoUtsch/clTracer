@@ -55,13 +55,13 @@ int cluLoadSource(const char *filename, size_t bufferSize, char *buffer,
 }
 
 cl_program cluBuildProgram(cl_context context, cl_device_id device,
-        const char *source, size_t sourceSize, int *err) {
+        const char *source, size_t sourceSize, const char *options, int *err) {
     cl_program program = clCreateProgramWithSource(context, 1,
             (const char **) &source, &sourceSize, err);
     if(*err < 0)
         return NULL;
 
-    *err = clBuildProgram(program, 0, NULL, "-Werror", NULL, NULL);
+    *err = clBuildProgram(program, 0, NULL, options, NULL, NULL);
     if(*err < 0) {
         int compileError = *err;
         size_t logSize;

@@ -55,14 +55,14 @@ std::string CodeGenerator::generateStructures(const World &world) {
         "    float size;\n"
         "} CheckerTexture;\n"
         "\n"
-        /*"typedef struct MapTexture {\n"
+        "typedef struct MapTexture {\n"
         "    float4 p0;\n"
         "    float4 p1;\n"
-        "    float4 *data;\n"
+        "    int dataBegin;\n"
         "    int width;\n"
         "    int height;\n"
         "} MapTexture;\n"
-        "\n"*/
+        "\n"
         "typedef struct Material {\n"
         "    float ambientCoef;\n"
         "    float diffuseCoef;\n"
@@ -163,14 +163,50 @@ std::string CodeGenerator::generateCheckerTextures(const World &world) {
 
 std::string CodeGenerator::generateMapTextures(const World &world) {
     std::stringstream code;
+    int texIndex = 0;
 
     if(!world.mapTextures.size()) return std::string();
-/*
-    code << "#define numMapTextures " << world.mapTextures.size() << "\n\n"
-        << "__constant MapTexture mapTextures[] = {\n";
+    code << "#define numMapTextures " << world.mapTextures.size() << "\n\n";
 
-    code << "};\n\n";
-    */
+    if(world.mapTextures.size()) {
+        code << "__constant MapTexture mapTextures[] = {\n";
+
+        for(size_t i = 0; i < world.mapTextures.size(); ++i) {
+            code << "    " << writeMapTexture(world.mapTextures[i], texIndex);
+            if(i != world.mapTextures.size() - 1)
+                code << ",";
+            code << "\n";
+
+            texIndex += world.mapTextures[i].texture.width()
+                * world.mapTextures[i].texture.height();
+        }
+
+        code << "};\n\n";
+
+        code << "__constant float4 mapData[] = {\n";
+
+        for(size_t i = 0; i < world.mapTextures.size(); ++i) {
+            const auto &data = world.mapTextures[i].texture.data;
+            for(size_t j = 0; j < data.size(); ++j) {
+                for(size_t k = 0; k < data[j].size(); ++k) {
+                    code << "{ "
+                        << writeColor(data[j].at(k))
+                        << " }";
+                    if(k + 1 != data[j].size())
+                        code << ", ";
+                }
+                if(j + 1 != data[j].size())
+                    code << ",";
+                code << "\n";
+            }
+        }
+
+        code << "};\n\n";
+    }
+    else {
+        code << "__constant MapTexture mapTextures[1]; // Dummy.\n\n";
+        code << "__constant float4 mapData[1]; // Dummy.\n\n";
+    }
 
     return code.str();
 }
@@ -289,6 +325,20 @@ std::string CodeGenerator::writeCheckerTexture(const CheckerTexture &tex) {
         << writeColor(tex.color2) << ", "
         << writeFloat(tex.size)
         <<  " }";
+
+    return code.str();
+}
+
+std::string CodeGenerator::writeMapTexture(const MapTexture &tex, int texIndex) {
+    std::stringstream code;
+
+    code << "{ "
+        << writePoint(tex.p0) << ", "
+        << writePoint(tex.p1) << ", "
+        << texIndex << ", "
+        << tex.texture.width() << ", "
+        << tex.texture.height()
+        << " }";
 
     return code.str();
 }

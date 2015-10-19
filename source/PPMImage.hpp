@@ -37,9 +37,6 @@
  * This class represents a single PPM image.
  */
 class PPMImage {
-    /// Matrix of colors.
-    std::vector< std::vector<Color> > _data;
-
     /// Height of the matrix (number of lines).
     int _height;
 
@@ -47,6 +44,10 @@ class PPMImage {
     int _width;
 
 public:
+
+    /// Matrix of colors.
+    std::vector< std::vector<Color> > data;
+
     /**
      * Constructs the PPM image from the given input in 32bit RGBA format.
      * Please note that the 4th component (the alpha channel) will be ignored.
@@ -62,6 +63,20 @@ public:
      * Writes the PPM image to the file with the given filename.
      */
     void writeTo(const char *filename);
+
+    /**
+     * Width of the image.
+     */
+    inline int width() const {
+        return _width;
+    }
+
+    /**
+     * Height of the image.
+     */
+    inline int height() const {
+        return _height;
+    }
 };
 
 #endif // !PPMIMAGE_HPP

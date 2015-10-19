@@ -57,11 +57,12 @@ int cluLoadSource(const char *filename, size_t bufferSize, char *buffer,
  * Builds the given source code to the given device and returns a cl_program
  * pointing to it.
  * Prints the error message in case of failure to stderr.
+ * @param options Options to the compiler.
  * @param err 0 in case of success or < 0 in case of failure.
  * @return the compiled program or NULL in case of failure.
  */
 cl_program cluBuildProgram(cl_context context, cl_device_id device,
-        const char *source, size_t sourceSize, int *err);
+        const char *source, size_t sourceSize, const char *options, int *err);
 
 #ifdef __cplusplus
 }

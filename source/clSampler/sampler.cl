@@ -25,12 +25,38 @@
  * THE SOFTWARE.
  */
 
+#define STACK_SIZE (MAX_DEPTH * MAX_DEPTH * MAX_DEPTH)
+
 /// Value returned by the trace function.
 typedef enum IntersectionType {
     NoIntersection,
     SphereIntersection,
     PolyhedronIntersection
 } IntersectionType;
+
+/// Recursion state.
+typedef struct State {
+    float4 origin, dir, intersection, normal;
+    float4 ambientDiffuseColor, specularColor;
+    float4 reflectionColor, transmissionColor;
+    float4 outColor;
+    int id, exclID, materialID, textureID, depth, stage;
+    IntersectionType exclType, iType;
+    TextureType textureType;
+    bool inside;
+} State;
+
+/// Stack used for recursion.
+typedef struct Stack {
+    State data[STACK_SIZE];
+    int top;
+} Stack;
+
+/// Stack of the return values.
+typedef struct RetStack {
+    float4 data[STACK_SIZE];
+    int top;
+} RetStack;
 
 /**
  * Tries to intersect with a sphere.
@@ -84,13 +110,78 @@ IntersectionType trace(float4 origin, float4 direction,
         int *outIntersectionID, float4 *outIntersection,
         float4 *outIntersectionNormal, bool *outInside);
 
-/*
+/**
  * Returns the color of the given texture type / ID.
  * @param type The texture type.
  * @param id The ID of the texture.
  * @param p The point of intersection to calculate the color.
  */
 float4 getTextureColor(TextureType type, int id, float4 p);
+
+/**
+ * Returns the correct object IDs given the intersection type and object id.
+ * @param iType Type of the intersected object.
+ * @param id ID of the object.
+ * @param materialID Output material id.
+ * @param textureType Output texture type.
+ * @param textureID Output texture id.
+ */
+void getObjectIDs(IntersectionType iType, int id, int *materialID,
+        TextureType *textureType, int *textureID);
+
+/**
+ * Returns the reflection direction.
+ * @param dir Ray direction.
+ * @param normal Normal at the intersection.
+ */
+float4 getReflectionDirection(float4 dir, float4 normal);
+
+/**
+ * Returns the transmission direction.
+ * @param refrRate The refraction rate.
+ * @param dir Direction of the ray.
+ * @param normal Normal at the intersection.
+ * @param transDir Output transmission direction.
+ * @return If there is indeed transmission or not.
+ */
+bool getTransmissionDirection(float refrRate, float4 dir, float4 normal,
+        float4 *transDir);
+
+void stackInit(Stack *stack);
+State *stackTop(Stack *stack);
+void stackPush(Stack *stack);
+void stackPop(Stack *stack);
+bool stackEmpty(Stack *stack);
+void initState(State *t, float4 origin, float4 dir, IntersectionType exclType,
+        int exclID, int depth, int stage);
+void retStackInit(RetStack *retStack);
+float4 *retStackTop(RetStack *retStack);
+void retStackPush(RetStack *retStack);
+void retStackPop(RetStack *retStack);
+
+/**
+ * Calculates the local color component.
+ * @param eyeDir Direction from the eye (camera).
+ * @param iType Type of the first intersection.
+ * @param id ID of the object of the first intersection.
+ * @param intersection Coordinates of intersection.
+ * @param normal Normal at intersection point.
+ * @param material Material of the intersected object.
+ * @param ambDiffColor output ambient + diffuse color.
+ * @param specularCOlor output specular color.
+ */
+void calculateLocalColor(float4 eyeDir, IntersectionType iType, int id,
+        float4 intersection,
+        float4 normal, __constant Material *material,
+        float4 *ambDiffColor, float4 *specularColor);
+
+/**
+ * Properly runs the sample.
+ * @param origin Ray origin.
+ * @param dir Ray direction.
+ * @return Color that was sampled.
+ */
+float4 runSample(float4 *origin, float4 *dir);
 
 float sphereIntersection(int id, float4 origin, float4 dir, float maxT,
         bool *inside)
@@ -266,7 +357,6 @@ float4 getTextureColor(TextureType type, int id, float4 p) {
     switch(type) {
         case SolidTextureType:
             return solidTextures[id].color;
-            break;
 
         case CheckerTextureType: {
             int val = floor(p.x / checkerTextures[id].size)
@@ -278,66 +368,128 @@ float4 getTextureColor(TextureType type, int id, float4 p) {
                 return checkerTextures[id].color1;
             else
                 return checkerTextures[id].color2;
-            break;
         }
 
-        case MapTextureType:
-            return p;
-            break;
+        case MapTextureType: {
+            float s = dot(mapTextures[id].p0, p);
+            float r = dot(mapTextures[id].p1, p);
+            int i = (int)(r * mapTextures[id].height) % mapTextures[id].height;
+            int j = (int)(s * mapTextures[id].width) % mapTextures[id].width;
+            if(i < 0) i += mapTextures[id].height;
+            if(j < 0) j += mapTextures[id].width;
+
+            int pos = mapTextures[id].dataBegin;
+            pos += i * mapTextures[id].height + j;
+            return mapData[pos];
+        }
     }
 }
 
-/**
- * Samples a ray from origin through direction.
- */
-__kernel void sample(__constant float4 *origin, __constant float4 *topLeft,
-        __constant float4 *up, __constant float4 *right, float pixelWidth,
-        float pixelHeight, __write_only image2d_t out)
-{
-    int2 coord = (int2) (get_global_id(0), get_global_id(1));
-
-    // First get the point position.
-    float4 dir = *topLeft + (*right * (coord.x * pixelWidth))
-        - (*up * (coord.y * pixelHeight));
-
-    // Now make it a direction vector.
-    dir = normalize(dir - *origin);
-
-    // See if the ray intersects anything.
-    int id;
-    float4 intersection;
-    float4 normal;
-    bool inside = false;
-    IntersectionType iType = trace(*origin, dir, NoIntersection, -1, 0, &id,
-            &intersection, &normal, &inside);
-
-    int materialID = -1, textureID = -1;
-    TextureType textureType = -1;
-
+void getObjectIDs(IntersectionType iType, int id, int *materialID,
+        TextureType *textureType, int *textureID) {
     switch(iType) {
         case NoIntersection:
-            write_imagef(out, coord, lights[0].color);
-            return;
+            break; // Shouldn't happen.
 
         case SphereIntersection:
-            materialID = spheres[id].materialID;
-            textureID = spheres[id].textureID;
-            textureType = spheres[id].textureType;
+            *materialID = spheres[id].materialID;
+            *textureID = spheres[id].textureID;
+            *textureType = spheres[id].textureType;
             break;
 
         case PolyhedronIntersection:
             if(numPolyhedrons) { // This if is because of an Intel compiler bug.
-                materialID = polyhedrons[id].materialID;
-                textureID = polyhedrons[id].textureID;
-                textureType = polyhedrons[id].textureType;
+                *materialID = polyhedrons[id].materialID;
+                *textureID = polyhedrons[id].textureID;
+                *textureType = polyhedrons[id].textureType;
             }
             break;
     }
+}
 
-    __constant Material *material = &materials[materialID];
-    float4 ambientColor = lights[0].color * material->ambientCoef;
-    float4 diffuseColor = (float4) (0.0f);
-    float4 specularColor = (float4) (0.0f);
+float4 getReflectionDirection(float4 dir, float4 normal)
+{
+    // Get the inversion of the direction.
+    float c = dot(-1.0f * dir, normal);
+
+    return normalize(dir + (2 * normal * c));
+}
+
+bool getTransmissionDirection(float refrRate, float4 dir, float4 normal,
+        float4 *transDir)
+{
+    float4 invDir = -1.0f * dir;
+    float c1 = dot(invDir, normal);
+    float c2 = 1.0f - pow(refrRate, 2) * (1.0f - pow(c1, 2));
+
+    if(c2 < -FLT_EPSILON) { // Total internal reflection.
+        *transDir = normalize((2 * normal * c1) - invDir);
+        return true;
+    }
+    else if(c2 > FLT_EPSILON) { // Refraction.
+        *transDir = normalize(normal * (refrRate * c1 - sqrt(c2))
+                + dir * refrRate);
+        return true;
+    }
+    else { // Parallel ray.
+        return false;
+    }
+}
+
+void stackInit(Stack *stack) {
+    stack->top = 0;
+}
+
+State *stackTop(Stack *stack) {
+    return &stack->data[stack->top];
+}
+
+void stackPush(Stack *stack) {
+    ++stack->top;
+}
+
+void stackPop(Stack *stack) {
+    --stack->top;
+}
+
+bool stackEmpty(Stack *stack) {
+    return stack->top == 0;
+}
+
+void initState(State *t, float4 origin, float4 dir,
+        IntersectionType exclType, int exclID, int depth, int stage) {
+    t->origin = origin;
+    t->dir = dir;
+    t->exclType = exclType;
+    t->exclID = exclID;
+    t->depth = depth;
+    t->stage = stage;
+}
+
+void retStackInit(RetStack *retStack) {
+    retStack->top = 0;
+}
+
+float4 *retStackTop(RetStack *retStack) {
+    return &retStack->data[retStack->top];
+}
+
+void retStackPush(RetStack *retStack) {
+    ++retStack->top;
+}
+
+void retStackPop(RetStack *retStack) {
+    --retStack->top;
+}
+
+
+void calculateLocalColor(float4 eyeDir, IntersectionType iType, int id,
+        float4 intersection,
+        float4 normal, __constant Material *material,
+        float4 *ambDiffColor, float4 *specularColor)
+{
+    *ambDiffColor = lights[0].color * material->ambientCoef;
+    *specularColor = (float4) (0.0f);
 
     // Trace a ray to all light sources and calculate the local light component.
     // Start at 1 because not counting ambient light.
@@ -360,13 +512,13 @@ __kernel void sample(__constant float4 *origin, __constant float4 *topLeft,
             float cosDiff = dot(lightDir, normal);
             if(cosDiff < FLT_EPSILON) cosDiff = 0.0f;
 
-            diffuseColor += lights[i].color * cosDiff
+            *ambDiffColor += lights[i].color * cosDiff
                 * material->diffuseCoef * att;
 
             // Calculate the specular light.
 
             // Halfway vector.
-            float4 halfway = normalize(lightDir + (-1.0f * dir));
+            float4 halfway = normalize(lightDir + (-1.0f * eyeDir));
 
             // Cos of the angle between the halfway and the normal.
             float cosSpec = dot(halfway, normal);
@@ -375,17 +527,126 @@ __kernel void sample(__constant float4 *origin, __constant float4 *topLeft,
             // Shininess.
             cosSpec = pow(cosSpec, material->specularExp);
 
-            specularColor += lights[i].color * cosSpec
+            *specularColor += lights[i].color * cosSpec
                 * material->specularCoef * att;
         }
     }
+}
 
-    // Calculate the final color.
-    // Ambient and diffuse colors are multiplied, the others need a sum.
+float4 runSample(float4 *argOrigin, float4 *argDir) {
+    Stack stack; // Recursion stack.
+    RetStack retStack; // Return stack.
+    State *t; // Top state.
+    //State *newT; // New top state.
+    float4 *r; // Return state.
 
-    float4 outColor = getTextureColor(textureType, textureID, intersection);
-    outColor *= (ambientColor + diffuseColor);
-    outColor += specularColor;
+    stackInit(&stack);
+    retStackInit(&retStack);
 
-    write_imagef(out, coord, clamp(outColor, 0.0f, 1.0f));
+    t = stackTop(&stack);
+    initState(t, *argOrigin, *argDir, NoIntersection, -1, MAX_DEPTH, 0);
+    stackPush(&stack);
+
+    while(!stackEmpty(&stack)) {
+        stackPop(&stack);
+        t = stackTop(&stack);
+        switch(t->stage) {
+            case 0: goto Stage0;
+            //case 1: goto Stage1;
+            //case 2: goto Stage2;
+        }
+
+Stage0:
+        // See if the ray intersects anything.
+        t->iType = trace(t->origin, t->dir, t->exclType, t->exclID, 0, &t->id,
+                &t->intersection, &t->normal, &t->inside);
+
+        if(t->iType == NoIntersection) { // Don't need to do anything anymore.
+            r = retStackTop(&retStack);
+            *r = lights[0].color;
+            retStackPush(&retStack);
+            continue;
+        }
+
+        getObjectIDs(t->iType, t->id, &t->materialID, &t->textureType,
+                &t->textureID);
+
+        // Calculate the local component of the color.
+        calculateLocalColor(t->dir, t->iType, t->id, t->intersection, t->normal,
+                &materials[t->materialID], &t->ambientDiffuseColor,
+                &t->specularColor);
+/*
+        t->reflectionColor = (float4) (0.0f);
+        t->transmissionColor = (float4) (0.0f);
+        if(t->depth > 0) {
+            // Reflected component added in recursively.
+            float4 reflDir = getReflectionDirection(t->dir, t->normal);
+            t->stage = 1;
+            stackPush(&stack);
+
+            newT = stackTop(&stack);
+            initState(newT, t->intersection, reflDir, t->iType, t->id,
+                    t->depth - 1, 0);
+            stackPush(&stack);
+            continue;
+Stage1:
+            retStackPop(&retStack);
+            t->reflectionColor = *retStackTop(&retStack);
+
+            // If outside the object invert the refraction rate.
+            float refrRate = materials[t->materialID].refractionRate;
+            if(!t->inside)
+                refrRate = 1.0f / refrRate;
+
+            // Transmission component added in recursively.
+            float4 transDir;
+            if(getTransmissionDirection(refrRate, t->dir, t->normal, &transDir)) {
+                t->stage = 2;
+                stackPush(&stack);
+
+                newT = stackTop(&stack);
+                initState(newT, t->intersection, transDir, t->iType, t->id,
+                        t->depth - 1, 0);
+                stackPush(&stack);
+                continue;
+Stage2:
+                retStackPop(&retStack);
+                t->transmissionColor = *retStackTop(&retStack);
+            }
+        }
+*/
+        // Calculate the final color.
+        // Ambient and diffuse colors are multiplied, the others need a sum.
+        float4 outColor = getTextureColor(t->textureType, t->textureID,
+                t->intersection);
+        outColor *= t->ambientDiffuseColor;
+        outColor += t->specularColor;// + t->reflectionColor + t->transmissionColor;
+
+        r = retStackTop(&retStack);
+        *r = clamp(outColor, 0.0f, 1.0f);
+        retStackPush(&retStack);
+    }
+
+    retStackPop(&retStack);
+    return *retStackTop(&retStack);
+}
+
+/**
+ * Samples a ray from origin through direction.
+ */
+__kernel void sample(__constant float4 *cOrigin, __constant float4 *topLeft,
+        __constant float4 *up, __constant float4 *right, float pixelWidth,
+        float pixelHeight, __write_only image2d_t out)
+{
+    int2 coord = (int2) (get_global_id(0), get_global_id(1));
+    float4 origin = *cOrigin;
+
+    // First get the point position.
+    float4 dir = *topLeft + (*right * (coord.x * pixelWidth))
+        - (*up * (coord.y * pixelHeight));
+
+    // Now make it a direction vector.
+    dir = normalize(dir - origin);
+
+    write_imagef(out, coord, runSample(&origin, &dir));
 }
