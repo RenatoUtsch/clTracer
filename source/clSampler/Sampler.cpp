@@ -105,7 +105,9 @@ Sampler::SamplerImpl::SamplerImpl(const char *source, long sourceSize,
     stop_if(err != CL_SUCCESS, "failed to create an OpenCL command queue. Error %d", err);
 
     program = cluBuildProgram(context, device, source, sourceSize,
-            "-Werror -DMAX_DEPTH=" STR(MAX_DEPTH), &err);
+            "-Werror -cl-strict-aliasing -cl-mad-enable -cl-no-signed-zeros "
+            "-cl-unsafe-math-optimizations "
+            "-DMAX_DEPTH=" STR(MAX_DEPTH), &err);
     stop_if(err < 0, "failed to compile the OpenCL kernel.");
 
     sampleKernel = clCreateKernel(program, "sample", &err);

@@ -153,8 +153,8 @@ State *stackTop(Stack *stack);
 void stackPush(Stack *stack);
 void stackPop(Stack *stack);
 bool stackEmpty(Stack *stack);
-void initState(State *t, float4 origin, float4 dir, IntersectionType exclType,
-        int exclID, int depth, int stage);
+void initState(State *t, float4 origin, float4 dir,
+        IntersectionType exclType, int exclID, int depth, int stage);
 void retStackInit(RetStack *retStack);
 float4 *retStackTop(RetStack *retStack);
 void retStackPush(RetStack *retStack);
@@ -171,9 +171,8 @@ void retStackPop(RetStack *retStack);
  * @param ambDiffColor output ambient + diffuse color.
  * @param specularCOlor output specular color.
  */
-void calculateLocalColor(float4 eyeDir, IntersectionType iType, int id,
-        float4 intersection,
-        float4 normal, __constant Material *material,
+void calculateLocalColor(const float4 *eyeDir, IntersectionType iType, int id,
+        float4 intersection, float4 normal, __constant Material *material,
         float4 *ambDiffColor, float4 *specularColor);
 
 /**
@@ -485,9 +484,8 @@ void retStackPop(RetStack *retStack) {
 }
 
 
-void calculateLocalColor(float4 eyeDir, IntersectionType iType, int id,
-        float4 intersection,
-        float4 normal, __constant Material *material,
+void calculateLocalColor(const float4 *eyeDir, IntersectionType iType, int id,
+        float4 intersection, float4 normal, __constant Material *material,
         float4 *ambDiffColor, float4 *specularColor)
 {
     *ambDiffColor = lights[0].color * material->ambientCoef;
@@ -520,7 +518,7 @@ void calculateLocalColor(float4 eyeDir, IntersectionType iType, int id,
             // Calculate the specular light.
 
             // Halfway vector.
-            float4 halfway = normalize(lightDir + (-1.0f * eyeDir));
+            float4 halfway = normalize(lightDir + (-1.0f * *eyeDir));
 
             // Cos of the angle between the halfway and the normal.
             float cosSpec = dot(halfway, normal);
@@ -574,7 +572,7 @@ Stage0:
                 &t->textureID);
 
         // Calculate the local component of the color.
-        calculateLocalColor(t->dir, t->iType, t->id, t->intersection, t->normal,
+        calculateLocalColor(&t->dir, t->iType, t->id, t->intersection, t->normal,
                 &materials[t->materialID], &t->ambientDiffuseColor,
                 &t->specularColor);
 
