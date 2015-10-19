@@ -171,7 +171,7 @@ void retStackPop(RetStack *retStack);
  * @param ambDiffColor output ambient + diffuse color.
  * @param specularCOlor output specular color.
  */
-void calculateLocalColor(const float4 *eyeDir, IntersectionType iType, int id,
+void calculateLocalColor(float4 eyeDir, IntersectionType iType, int id,
         float4 intersection, float4 normal, __constant Material *material,
         float4 *ambDiffColor, float4 *specularColor);
 
@@ -484,7 +484,7 @@ void retStackPop(RetStack *retStack) {
 }
 
 
-void calculateLocalColor(const float4 *eyeDir, IntersectionType iType, int id,
+void calculateLocalColor(float4 eyeDir, IntersectionType iType, int id,
         float4 intersection, float4 normal, __constant Material *material,
         float4 *ambDiffColor, float4 *specularColor)
 {
@@ -518,7 +518,7 @@ void calculateLocalColor(const float4 *eyeDir, IntersectionType iType, int id,
             // Calculate the specular light.
 
             // Halfway vector.
-            float4 halfway = normalize(lightDir + (-1.0f * *eyeDir));
+            float4 halfway = normalize(lightDir + (-1.0f * eyeDir));
 
             // Cos of the angle between the halfway and the normal.
             float cosSpec = dot(halfway, normal);
@@ -572,7 +572,7 @@ Stage0:
                 &t->textureID);
 
         // Calculate the local component of the color.
-        calculateLocalColor(&t->dir, t->iType, t->id, t->intersection, t->normal,
+        calculateLocalColor(t->dir, t->iType, t->id, t->intersection, t->normal,
                 &materials[t->materialID], &t->ambientDiffuseColor,
                 &t->specularColor);
 
