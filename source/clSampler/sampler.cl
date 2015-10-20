@@ -190,7 +190,7 @@ float sphereIntersection(int id, float4 origin, float4 dir, float maxT,
 
     float a = dot(dir, dir);
     float b = 2.0f * dot(dir, e);
-    float c = dot(e, e) - pow(spheres[id].radius, 2);
+    float c = dot(e, e) - spheres[id].radius2;
 
     float discriminant = pow(b, 2) - 4.0f * a * c;
     if(discriminant < FLT_EPSILON) {

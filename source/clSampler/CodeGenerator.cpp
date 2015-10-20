@@ -75,7 +75,7 @@ std::string CodeGenerator::generateStructures(const World &world) {
         "\n"
         "typedef struct Sphere {\n"
         "    float4 center;\n"
-        "    float radius;\n"
+        "    float radius2;\n"
         "    TextureType textureType;\n"
         "    int textureID;\n"
         "    int materialID;\n"
@@ -363,7 +363,7 @@ std::string CodeGenerator::writeSphere(const Sphere &sphere) {
 
     code << "{ "
         << writePoint(sphere.center) << ", "
-        << writeFloat(sphere.radius) << ", "
+        << writeFloat(sphere.radius2) << ", "
         << sphere.textureType << ", "
         << sphere.textureID << ", "
         << sphere.materialID

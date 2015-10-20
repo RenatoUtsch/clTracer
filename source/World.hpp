@@ -100,7 +100,7 @@ struct Material {
  */
 struct Sphere {
     Point center;               /// Center of the sphere.
-    float radius;               /// Radius of the sphere.
+    float radius2;              /// Radius^2 of the sphere.
     TextureType textureType;    /// Texture type.
     int textureID;              /// Texture ID.
     int materialID;             /// Material ID.

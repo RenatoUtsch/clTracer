@@ -27,6 +27,7 @@
 
 #include "../Sampler.hpp"
 #include "../error.hpp"
+#include "../utils.hpp"
 #include "CodeGenerator.hpp"
 #include "OpenCL.h"
 #include <fstream>
@@ -66,6 +67,8 @@ struct Sampler::SamplerImpl {
     cl_mem upBuffer;        /// Up vector
     cl_mem rightBuffer;     /// Right vector
     cl_mem outputImage;     /// Output image.
+
+    Time time;              /// Used for benchmarking.
 
     /// Sets up OpenCL with the given program source code.
     SamplerImpl(const char *source, long sourceSize, int _width, int _height,
@@ -280,16 +283,26 @@ void Sampler::SamplerImpl::updateSampleArgs(Screen &screen) {
 void Sampler::SamplerImpl::runSample() {
     size_t work_size[2] = {(size_t) width, (size_t) height};
     size_t global_offset[2] = {0, 0};
+
+    // Start benchmarking the execution.
+    time = getTime();
+
     int err = clEnqueueNDRangeKernel(queue, sampleKernel, 2, global_offset,
             work_size, NULL, 0, NULL, NULL);
     stop_if(err != CL_SUCCESS, "failed to enqueue kernel execution. Error %d.", err);
+
+    // Wait for everything to end.
+    clFinish(queue);
+    stop_if(err != CL_SUCCESS, "failed to wait for queue to finish. Error %d.", err);
+
+    // Print time.
+    time = getTime() - time;
+    std::cout << "Kernel execution time: " << time << "ms\n"
+        << "Generating output..." << std::endl;
 }
 
 std::shared_ptr<PPMImage> Sampler::SamplerImpl::genOutputImage() {
     int err;
-
-    // Wait for everything to end.
-    clFinish(queue);
 
     // Map the entire output image.
     size_t rowPitch = 0;

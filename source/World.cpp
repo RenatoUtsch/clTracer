@@ -145,7 +145,9 @@ void World::readObjectDescription(std::ifstream &in) {
             obj.textureID = _textureInfos[rawTextureID].id;
             obj.materialID = materialID;
 
-            in >> obj.center.x >> obj.center.y >> obj.center.z >> obj.radius;
+            float radius;
+            in >> obj.center.x >> obj.center.y >> obj.center.z >> radius;
+            obj.radius2 = pow(radius, 2);
 
             spheres.push_back(obj);
         }
