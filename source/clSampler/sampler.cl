@@ -186,29 +186,21 @@ float4 runSample(float4 *origin, float4 *dir);
 float sphereIntersection(int id, float4 origin, float4 dir, float maxT,
         bool *inside)
 {
-    float4 e = (origin - spheres[id].center);
+    float4 e = spheres[id].center - origin;
+    float tca = dot(e, dir);
+    float d2 = dot(e, e) - pow(tca, 2);
+    if(d2 > spheres[id].radius2) return -1.0f; // No intersection.
 
-    float a = dot(dir, dir);
-    float b = 2.0f * dot(dir, e);
-    float c = dot(e, e) - spheres[id].radius2;
+    float thc = sqrt(spheres[id].radius2 - d2);
+    float t1 = tca - thc;
+    float t2 = tca + thc;
 
-    float discriminant = pow(b, 2) - 4.0f * a * c;
-    if(discriminant < FLT_EPSILON) {
-        // No intersection.
-        return -1.0f;
-    }
-
-    // Solve the equation. Test both solutions.
-    discriminant = sqrt(discriminant);
-    float t1 = (-b - discriminant) / (2.0f * a);
-    float t2 = (-b + discriminant) / (2.0f * a);
-
-    // t1 is always smaller than t2 because it uses -b - discriminant;
-    if(t1 > FLT_EPSILON && t1 < maxT) {
+    // t1 is always smaller than t2 since t1 subtracts thc.
+    if(t1 > 0.0f && t1 < maxT) {
         *inside = false;
         return t1;
     }
-    else if(t2 > FLT_EPSILON && t2 < maxT) {
+    else if(t2 > 0.0f && t2 < maxT) {
         *inside = true;
         return t2;
     }
