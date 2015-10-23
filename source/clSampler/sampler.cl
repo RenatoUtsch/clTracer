@@ -176,6 +176,19 @@ void calculateLocalColor(float4 eyeDir, IntersectionType iType, int id,
         float4 *ambDiffColor, float4 *specularColor);
 
 /**
+ * Calculates the final color of the state.
+ */
+float4 calculateFinalColor(State *t);
+
+/**
+ * Stages of the castRay recursion.
+ */
+void runSampleStage0(Stack *stack, RetStack *retStack, State *t);
+void runSampleStage1(Stack *stack, RetStack *retStack, State *t);
+void runSampleStage2(RetStack *retStack, State *t);
+void runSampleStage3(RetStack *retStack, State *t);
+
+/**
  * Properly runs the sample.
  * @param origin Ray origin.
  * @param dir Ray direction.
@@ -525,12 +538,99 @@ void calculateLocalColor(float4 eyeDir, IntersectionType iType, int id,
     }
 }
 
+float4 calculateFinalColor(State *t) {
+    // Calculate the final color.
+    // Ambient and diffuse colors are multiplied, the others need a sum.
+    float4 outColor = getTextureColor(t->textureType, t->textureID,
+            t->intersection);
+    outColor *= t->ambientDiffuseColor;
+    outColor += t->specularColor + t->reflectionColor + t->transmissionColor;
+
+    return clamp(outColor, 0.0f, 1.0f);
+}
+
+void runSampleStage0(Stack *stack, RetStack *retStack, State *t) {
+    // See if the ray intersects anything.
+    t->iType = trace(t->origin, t->dir, t->exclType, t->exclID, 0, &t->id,
+            &t->intersection, &t->normal, &t->inside);
+
+    if(t->iType == NoIntersection) { // Don't need to do anything anymore.
+        float4 *r = retStackTop(retStack);
+        *r = lights[0].color;
+        retStackPush(retStack);
+        return;
+    }
+
+    getObjectIDs(t->iType, t->id, &t->materialID, &t->textureType,
+            &t->textureID);
+
+    // Calculate the local component of the color.
+    calculateLocalColor(t->dir, t->iType, t->id, t->intersection, t->normal,
+            &materials[t->materialID], &t->ambientDiffuseColor,
+            &t->specularColor);
+
+    t->reflectionColor = (float4) (0.0f);
+    t->transmissionColor = (float4) (0.0f);
+    if(t->depth > 0) {
+        // Reflected component added in recursively.
+        float4 reflDir = getReflectionDirection(t->dir, t->normal);
+        t->stage = 1;
+        stackPush(stack); // Set this for when the recursion returns.
+
+        State *newT = stackTop(stack);
+        initState(newT, t->intersection, reflDir, t->iType, t->id,
+                t->depth - 1, 0);
+        stackPush(stack); // new iteration.
+        return;
+    }
+
+    runSampleStage3(retStack, t);
+}
+
+void runSampleStage1(Stack *stack, RetStack *retStack, State *t) {
+    retStackPop(retStack);
+    t->reflectionColor = *retStackTop(retStack);
+    t->reflectionColor *= materials[t->materialID].reflectionCoef;
+
+    // If outside the object invert the refraction rate.
+    float refrRate = materials[t->materialID].refractionRate;
+    if(!t->inside)
+        refrRate = 1.0f / refrRate;
+
+    // Transmission component added in recursively.
+    float4 transDir;
+    if(getTransmissionDirection(refrRate, t->dir, t->normal, &transDir)) {
+        t->stage = 2;
+        stackPush(stack); // Set this for when the recursion returns.
+
+        State *newT = stackTop(stack);
+        initState(newT, t->intersection, transDir, t->iType, t->id,
+                t->depth - 1, 0);
+        stackPush(stack); // New iteration.
+        return;
+    }
+
+    runSampleStage3(retStack, t);
+}
+
+void runSampleStage2(RetStack *retStack, State *t) {
+    retStackPop(retStack);
+    t->transmissionColor = *retStackTop(retStack);
+    t->transmissionColor *= materials[t->materialID].transmissionCoef;
+
+    runSampleStage3(retStack, t);
+}
+
+void runSampleStage3(RetStack *retStack, State *t) {
+        float4 *r = retStackTop(retStack);
+        *r = calculateFinalColor(t);
+        retStackPush(retStack);
+}
+
 float4 runSample(float4 *argOrigin, float4 *argDir) {
     Stack stack; // Recursion stack.
     RetStack retStack; // Return stack.
     State *t; // Top state.
-    State *newT; // New top state.
-    float4 *r; // Return state.
 
     stackInit(&stack);
     retStackInit(&retStack);
@@ -539,88 +639,18 @@ float4 runSample(float4 *argOrigin, float4 *argDir) {
     initState(t, *argOrigin, *argDir, NoIntersection, -1, MAX_DEPTH, 0);
     stackPush(&stack);
 
+    // Simulated recursion.
     while(!stackEmpty(&stack)) {
         stackPop(&stack);
         t = stackTop(&stack);
         switch(t->stage) {
-            case 0: goto Stage0;
-            case 1: goto Stage1;
-            case 2: goto Stage2;
+            case 0: runSampleStage0(&stack, &retStack, t); break;
+            case 1: runSampleStage1(&stack, &retStack, t); break;
+            case 2: runSampleStage2(&retStack, t); break;
         }
-
-Stage0:
-        // See if the ray intersects anything.
-        t->iType = trace(t->origin, t->dir, t->exclType, t->exclID, 0, &t->id,
-                &t->intersection, &t->normal, &t->inside);
-
-        if(t->iType == NoIntersection) { // Don't need to do anything anymore.
-            r = retStackTop(&retStack);
-            *r = lights[0].color;
-            retStackPush(&retStack);
-            continue;
-        }
-
-        getObjectIDs(t->iType, t->id, &t->materialID, &t->textureType,
-                &t->textureID);
-
-        // Calculate the local component of the color.
-        calculateLocalColor(t->dir, t->iType, t->id, t->intersection, t->normal,
-                &materials[t->materialID], &t->ambientDiffuseColor,
-                &t->specularColor);
-
-        t->reflectionColor = (float4) (0.0f);
-        t->transmissionColor = (float4) (0.0f);
-        if(t->depth > 0) {
-            // Reflected component added in recursively.
-            float4 reflDir = getReflectionDirection(t->dir, t->normal);
-            t->stage = 1;
-            stackPush(&stack);
-
-            newT = stackTop(&stack);
-            initState(newT, t->intersection, reflDir, t->iType, t->id,
-                    t->depth - 1, 0);
-            stackPush(&stack);
-            continue;
-Stage1:
-            retStackPop(&retStack);
-            t->reflectionColor = *retStackTop(&retStack);
-            t->reflectionColor *= materials[t->materialID].reflectionCoef;
-
-            // If outside the object invert the refraction rate.
-            float refrRate = materials[t->materialID].refractionRate;
-            if(!t->inside)
-                refrRate = 1.0f / refrRate;
-
-            // Transmission component added in recursively.
-            float4 transDir;
-            if(getTransmissionDirection(refrRate, t->dir, t->normal, &transDir)) {
-                t->stage = 2;
-                stackPush(&stack);
-
-                newT = stackTop(&stack);
-                initState(newT, t->intersection, transDir, t->iType, t->id,
-                        t->depth - 1, 0);
-                stackPush(&stack);
-                continue;
-Stage2:
-                retStackPop(&retStack);
-                t->transmissionColor = *retStackTop(&retStack);
-                t->transmissionColor *= materials[t->materialID].transmissionCoef;
-            }
-        }
-
-        // Calculate the final color.
-        // Ambient and diffuse colors are multiplied, the others need a sum.
-        float4 outColor = getTextureColor(t->textureType, t->textureID,
-                t->intersection);
-        outColor *= t->ambientDiffuseColor;
-        outColor += t->specularColor + t->reflectionColor + t->transmissionColor;
-
-        r = retStackTop(&retStack);
-        *r = clamp(outColor, 0.0f, 1.0f);
-        retStackPush(&retStack);
     }
 
+    // Return the top of the stack.
     retStackPop(&retStack);
     return *retStackTop(&retStack);
 }
