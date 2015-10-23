@@ -30,6 +30,7 @@
 
 #include "math/math.hpp"
 #include <cstdlib>
+#include <string>
 
 /*
  * This class stores the data needed to generate the position and direction of
@@ -71,7 +72,7 @@ public:
      * @param aWidthInPixels Width of the screen in pixels.
      * @param aHeightInPixels Height of the screen in pixels.
      */
-    Screen(const char *aInput, int aWidthInPixels, int aHeightInPixels);
+    Screen(const std::string &aInput, int aWidthInPixels, int aHeightInPixels);
 
     ~Screen();
 

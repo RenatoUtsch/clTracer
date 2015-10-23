@@ -63,7 +63,7 @@ set( RAYTRACER_LIBRARIES ${RAYTRACER_LIBRARIES} ${OpenCL_LIBRARIES} )
 
 # Boids sources
 set( RAYTRACER_SOURCE_FILES "${RAYTRACER_SOURCE_DIR}/source/main.cpp"
-                        "${RAYTRACER_SOURCE_DIR}/source/parser.cpp"
+                        "${RAYTRACER_SOURCE_DIR}/source/CmdArgs.cpp"
                         "${RAYTRACER_SOURCE_DIR}/source/PPMImage.cpp"
                         "${RAYTRACER_SOURCE_DIR}/source/Screen.cpp"
                         "${RAYTRACER_SOURCE_DIR}/source/World.cpp"

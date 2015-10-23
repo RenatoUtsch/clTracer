@@ -29,7 +29,7 @@
 #include "error.hpp"
 #include <fstream>
 
-Screen::Screen(const char *aInput, int aWidthInPixels, int aHeightInPixels)
+Screen::Screen(const std::string &aInput, int aWidthInPixels, int aHeightInPixels)
         : _widthInPixels(aWidthInPixels), _heightInPixels(aHeightInPixels),
           _recalculateTopLeft(true), _recalculateCameraPos(true),
           _recalculateUpVector(true), _recalculateRightVector(true) {
@@ -41,7 +41,7 @@ Screen::Screen(const char *aInput, int aWidthInPixels, int aHeightInPixels)
 
     // Read the input file.
     std::ifstream in(aInput);
-    stop_if(!in.is_open(), "failed to open input file (%s).", aInput);
+    stop_if(!in.is_open(), "failed to open input file (%s).", aInput.c_str());
 
     in >> _cameraPos.x >> _cameraPos.y >> _cameraPos.z;
     in >> _screenCenter.x >> _screenCenter.y >> _screenCenter.z;

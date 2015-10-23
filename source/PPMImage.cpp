@@ -46,9 +46,9 @@ PPMImage::PPMImage(uint8_t *aImage, int aWidth, int aHeight)
     }
 }
 
-PPMImage::PPMImage(const char *filename) {
+PPMImage::PPMImage(const std::string &filename) {
     std::ifstream in(filename);
-    stop_if(!in, "failed to open ppm file: %s", filename);
+    stop_if(!in, "failed to open ppm file: %s", filename.c_str());
 
     std::string line;
     std::stringstream ss;
@@ -84,9 +84,9 @@ PPMImage::PPMImage(const char *filename) {
     }
 }
 
-void PPMImage::writeTo(const char *filename) {
+void PPMImage::writeTo(const std::string &filename) {
     std::ofstream out(filename);
-    stop_if(!out.is_open(), "failed to open output file (%s).", filename);
+    stop_if(!out.is_open(), "failed to open output file (%s).", filename.c_str());
 
     // PPM header.
     out << "P6\n";

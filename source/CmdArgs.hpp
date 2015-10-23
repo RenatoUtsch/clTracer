@@ -25,59 +25,66 @@
  * THE SOFTWARE.
  */
 
-#ifndef PPMIMAGE_HPP
-#define PPMIMAGE_HPP
+#ifndef CMDARGS_HPP
+#define CMDARGS_HPP
 
-#include "Color.hpp"
-
-#include <cstdint>
-#include <vector>
 #include <string>
 
 /**
- * This class represents a single PPM image.
+ * Represents the command line arguments.
  */
-class PPMImage {
-    /// Height of the matrix (number of lines).
-    int _height;
+class CmdArgs {
+    std::string _input, _output, _programName;
+    int _width, _height, _aa;
 
-    /// Width of the matrix (number of columns).
-    int _width;
+    /// Returns the given option or NULL if it wasn't found.
+    char *getOption(char **begin, char **end, const std::string &option);
+
+    /// Returns true if the given option exists or false if not.
+    bool optionExists(char **begin, char **end, const std::string &option);
+
+    /// Prints a command line error message and exits.
+    void printErrorAndQuit(int argc, char **argv);
+
+    /// Prints the help message and exits.
+    void printHelpAndQuit(int argc, char **argv);
 
 public:
-
-    /// Matrix of colors.
-    std::vector< std::vector<Color> > data;
-
     /**
-     * Constructs the PPM image from the given input in 32bit RGBA format.
-     * Please note that the 4th component (the alpha channel) will be ignored.
+     * Inits the class with the input from argc and argv.
+     * This constructor may finish the program in case the input is invalid.
      */
-    PPMImage(uint8_t *aImage, int aWidth, int aHeight);
+    CmdArgs(int argc, char **argv);
 
-    /**
-     * Constructs the PPM image from the given PPM file.
-     */
-    PPMImage(const std::string &filename);
+    /// Returns the input filename.
+    inline const std::string &inputFilename() const {
+        return _input;
+    }
 
-    /**
-     * Writes the PPM image to the file with the given filename.
-     */
-    void writeTo(const std::string &filename);
+    /// Returns the output filename.
+    inline const std::string &outputFilename() const {
+        return _output;
+    }
 
-    /**
-     * Width of the image.
-     */
+    /// Returns the program name.
+    inline const std::string &programName() const {
+        return _programName;
+    }
+
+    /// Returns the width of the screen.
     inline int width() const {
         return _width;
     }
 
-    /**
-     * Height of the image.
-     */
+    /// Returns the height of the screen.
     inline int height() const {
         return _height;
     }
+
+    /// Returns the AntiAliasing level of the screen.
+    inline int AALevel() const {
+        return _aa;
+    }
 };
 
-#endif // !PPMIMAGE_HPP
+#endif // !CMDARGS_HPP

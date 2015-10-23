@@ -25,25 +25,22 @@
  * THE SOFTWARE.
  */
 
-#include "parser.hpp"
+#include "CmdArgs.hpp"
 #include "PPMImage.hpp"
 #include "Screen.hpp"
 #include "Sampler.hpp"
 #include "World.hpp"
 
 int main(int argc, char **argv) {
-    char *input, *output;
-    int width, height;
+    CmdArgs args {argc, argv};
+    Screen screen {args.inputFilename(), args.width(), args.height()};
+    World world {args.inputFilename()};
 
-    parseInput(argc, argv, &input, &output, &width, &height);
-
-    Screen screen {input, width, height};
-    World world {input};
-
-    Sampler sampler {world, width, height, screen.pixelWidth(), screen.pixelHeight()};
+    Sampler sampler {world, args.width(), args.height(), screen.pixelWidth(),
+        screen.pixelHeight()};
     auto image = sampler.sample(screen);
 
-    image->writeTo(output);
+    image->writeTo(args.outputFilename());
 
     return 0;
 }
