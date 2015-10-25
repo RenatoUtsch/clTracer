@@ -31,18 +31,22 @@
 #include <string>
 #include <limits>
 
-World::World(const std::string &aInput) {
-    std::ifstream in(aInput.c_str());
+World::World(const CmdArgs &args) {
+    std::string aInput = args.inputFilename();
+    std::ifstream in(aInput);
     stop_if(!in.is_open(), "failed to open input file.");
 
-    ignoreCameraDescription(in);
-    readLightDescription(in);
+    ignoreCameraDescription(in, args.extSpec());
+    readLightDescription(in, args.extSpec());
     readTextureDescription(in, aInput.substr(0, aInput.rfind('/') + 1));
     readMaterialDescription(in);
     readObjectDescription(in);
 }
 
-void World::ignoreCameraDescription(std::ifstream &in) {
+void World::ignoreCameraDescription(std::ifstream &in, bool extSpec) {
+    if(extSpec)
+        in.ignore(std::numeric_limits<std::streamsize>::max(), in.widen('\n'));
+
     // The camera description has 4 lines.
     in.ignore(std::numeric_limits<std::streamsize>::max(), in.widen('\n'));
     in.ignore(std::numeric_limits<std::streamsize>::max(), in.widen('\n'));
@@ -50,7 +54,7 @@ void World::ignoreCameraDescription(std::ifstream &in) {
     in.ignore(std::numeric_limits<std::streamsize>::max(), in.widen('\n'));
 }
 
-void World::readLightDescription(std::ifstream &in) {
+void World::readLightDescription(std::ifstream &in, bool extSpec) {
     Light light;
     int numLights;
 
@@ -58,6 +62,8 @@ void World::readLightDescription(std::ifstream &in) {
     for(int i = 0; i < numLights; ++i) {
         in >> light.pos.x >> light.pos.y >> light.pos.z;
         in >> light.color.r >> light.color.g >> light.color.b;
+        if(extSpec)
+            in >> light.size;
         in >> light.constantAtt >> light.linearAtt >> light.quadraticAtt;
 
         lights.push_back(light);

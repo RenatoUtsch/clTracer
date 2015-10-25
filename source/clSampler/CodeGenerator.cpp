@@ -34,6 +34,7 @@ std::string CodeGenerator::generateStructures(const World &world) {
         "typedef struct Light {\n"
         "    float4 pos;\n"
         "    float4 color;\n"
+        "    float size;\n"
         "    float constantAtt;\n"
         "    float linearAtt;\n"
         "    float quadraticAtt;\n"
@@ -90,6 +91,19 @@ std::string CodeGenerator::generateStructures(const World &world) {
         "} Polyhedron;\n"
         "\n"
     );
+}
+
+std::string CodeGenerator::generateConstants(const Screen &screen,
+        const CmdArgs &args) {
+    std::stringstream code;
+
+    code << "#define pixelWidth ((float) " << screen.pixelWidth() << ")\n"
+        << "#define pixelHeight ((float) " << screen.pixelHeight() << ")\n"
+        << "#define aaLevel ((int) " << args.aaLevel() << ")\n"
+        << "#define ssLevel ((int) " << args.ssLevel() << ")\n"
+        << "\n";
+
+    return code.str();
 }
 
 std::string CodeGenerator::generateLights(const World &world) {
@@ -300,6 +314,7 @@ std::string CodeGenerator::writeLight(const Light &light) {
     code << "{ "
         << writePoint(light.pos) << ", "
         << writeColor(light.color) << ", "
+        << writeFloat(light.size) << ", "
         << writeFloat(light.constantAtt) << ", "
         << writeFloat(light.linearAtt) << ", "
         << writeFloat(light.quadraticAtt)
@@ -436,12 +451,14 @@ std::string CodeGenerator::writeFloat(float val) {
     return code.str();
 }
 
-std::string CodeGenerator::generateCode(const World &world) {
+std::string CodeGenerator::generateCode(const World &world, const Screen &screen,
+        const CmdArgs &args) {
     std::stringstream code;
 
     code << "// Generated code. Do not change, as these changes will be lost.\n\n";
 
     code << generateStructures(world)
+        << generateConstants(screen, args)
         << generateLights(world)
         << generateSolidTextures(world)
         << generateCheckerTextures(world)

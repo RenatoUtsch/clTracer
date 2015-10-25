@@ -29,6 +29,7 @@
 #define SCREEN_HPP
 
 #include "math/math.hpp"
+#include "CmdArgs.hpp"
 #include <cstdlib>
 #include <string>
 
@@ -45,8 +46,9 @@ class Screen {
     Vector _right;          /// Direction to the right of the camera.
     float _width;           /// Width in world coordinates of the screen.
     float _height;          /// Height in world coordinates of the screen.
-    int _widthInPixels;         /// Width of the screen in pixels.
-    int _heightInPixels;        /// Height of the screen in pixels.
+    int _widthInPixels;     /// Width of the screen in pixels.
+    int _heightInPixels;    /// Height of the screen in pixels.
+    int _aaLevel;           /// Antialiasing level.
 
     // Data that may be recalculated when being accessed.
     float *_linearizedTopLeftPixel;     /// Array with the top left pixel.
@@ -68,25 +70,22 @@ class Screen {
 public:
     /**
      * Initializes the screen.
-     * @param aInput Name of the input file with the initial data.
-     * @param aWidthInPixels Width of the screen in pixels.
-     * @param aHeightInPixels Height of the screen in pixels.
      */
-    Screen(const std::string &aInput, int aWidthInPixels, int aHeightInPixels);
+    Screen(const CmdArgs &args);
 
     ~Screen();
 
     /**
      * Returns the camera position.
      */
-    inline const Point &cameraPos() {
+    inline const Point &cameraPos() const {
         return _cameraPos;
     }
 
     /**
      * Returns the center of the projection plane.
      */
-    inline const Point &screenCenter() {
+    inline const Point &screenCenter() const {
         return _screenCenter;
     }
 
@@ -94,72 +93,81 @@ public:
      * Returns a normalized vector that represents the direction where the
      * camera is looking at.
      */
-    inline Vector cameraDir() {
+    inline Vector cameraDir() const {
         return (_screenCenter - _cameraPos).normalize();
     }
 
     /**
      * Returns the up vector of the camera and the projection plane.
      */
-    inline const Vector &up() {
+    inline const Vector &up() const {
         return _up;
     }
 
     /**
      * Returns the right vector of the camera and the projection plane.
      */
-    inline const Vector &right() {
+    inline const Vector &right() const {
         return _right;
     }
 
     /**
      * Returns the width of the screen in world coordinates.
      */
-    inline float width() {
+    inline float width() const {
         return _width;
     }
 
     /**
      * Returns the height of the screen in world coordinates.
      */
-    inline float height() {
+    inline float height() const {
         return _height;
     }
 
     /**
      * Returns the width of a pixel in world coordinates.
      */
-    inline float pixelWidth() {
+    inline float pixelWidth() const {
         return _width / _widthInPixels;
     }
 
     /**
      * Returns the height of a pixel in world coordinates.
      */
-    inline float pixelHeight() {
+    inline float pixelHeight() const {
         return _height / _heightInPixels;
     }
 
     /**
      * Returns the number of pixels in the width of the image.
      */
-    inline int widthInPixels() {
+    inline int widthInPixels() const {
         return _widthInPixels;
     }
 
     /**
      * Returns the number of pixels in the height of the image.
      */
-    inline int heightInPixels() {
+    inline int heightInPixels() const {
         return _heightInPixels;
     }
 
     /**
      * Returns the center of the top left pixel.
      */
-    inline Point topLeftPixel() {
-        return _screenCenter - (_right * (_width / 2))
+    inline Point topLeftPixel() const {
+        Point p = _screenCenter - (_right * (_width / 2))
             + (_up * (_height / 2));
+
+        // Get the point with the antialiasing position.
+        if(_aaLevel > 1) {
+            float pw = pixelWidth(), ph = pixelHeight();
+            p += _right * (pw / (2 * _aaLevel) - pw / 2);
+            p += _up * (ph / 2 - ph / (2 * _aaLevel));
+        }
+
+        return p;
     }
 
     /**
@@ -208,28 +216,28 @@ public:
     /**
      * If needs to update the top left pixel position.
      */
-    inline bool linearizedTopLeftPixelNeedsUpdate() {
+    inline bool linearizedTopLeftPixelNeedsUpdate() const {
         return _recalculateTopLeft;
     }
 
     /**
      * If needs to update the linearized camera pos.
      */
-    inline bool linearizedCameraPosNeedsUpdate() {
+    inline bool linearizedCameraPosNeedsUpdate() const {
         return _recalculateCameraPos;
     }
 
     /**
      * If needs to update the linearized up vector.
      */
-    inline bool linearizedUpVectorNeedsUpdate() {
+    inline bool linearizedUpVectorNeedsUpdate() const {
         return _recalculateUpVector;
     }
 
     /**
      * If needs to update teh linearized right vector.
      */
-    inline bool linearizedRightVectorNeedsUpdate() {
+    inline bool linearizedRightVectorNeedsUpdate() const {
         return _recalculateRightVector;
     }
 

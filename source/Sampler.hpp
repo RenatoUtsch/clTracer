@@ -30,6 +30,7 @@
 
 #include "World.hpp"
 #include "Screen.hpp"
+#include "CmdArgs.hpp"
 #include "PPMImage.hpp"
 
 #include <cstdint>
@@ -51,13 +52,10 @@ public:
      * Creates a sampler object.
      * @param world All the constant information about the world. This will be
      * constant through all the execution of the sampler.
-     * @param width Width of the generated image.
-     * @param height Height of the generated image.
-     * @param pixelWidth Width of a pixel.
-     * @param pixelHeight Height of a pixel.
+     * @param screen Screen properties.
+     * @param args Program command line arguments.
      */
-    Sampler(const World &world, int width, int height, float pixelWidth,
-            float pixelHeight);
+    Sampler(const World &world, const Screen &screen, const CmdArgs &args);
 
     ~Sampler();
 

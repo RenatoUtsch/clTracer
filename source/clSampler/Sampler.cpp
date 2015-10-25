@@ -53,7 +53,6 @@
 
 struct Sampler::SamplerImpl {
     int width, height;
-    float pixelWidth, pixelHeight;
     cl_platform_id platform;
     cl_device_id device;
     cl_context context;
@@ -71,8 +70,7 @@ struct Sampler::SamplerImpl {
     Time time;              /// Used for benchmarking.
 
     /// Sets up OpenCL with the given program source code.
-    SamplerImpl(const char *source, long sourceSize, int _width, int _height,
-            float _pixelWidth, float _pixelHeight);
+    SamplerImpl(const char *source, long sourceSize, int _width, int _height);
 
     ~SamplerImpl();
 
@@ -87,9 +85,8 @@ struct Sampler::SamplerImpl {
 };
 
 Sampler::SamplerImpl::SamplerImpl(const char *source, long sourceSize,
-        int _width, int _height, float _pixelWidth, float _pixelHeight)
+        int _width, int _height)
         : width(_width), height(_height)
-        , pixelWidth(_pixelWidth), pixelHeight(_pixelHeight)
 {
     int err;
 
@@ -158,14 +155,8 @@ Sampler::SamplerImpl::SamplerImpl(const char *source, long sourceSize,
     err = clSetKernelArg(sampleKernel, 3, sizeof(rightBuffer), &rightBuffer);
     stop_if(err < 0, "failed to set fourth kernel argument. Error %d.", err);
 
-    err = clSetKernelArg(sampleKernel, 4, sizeof(float), &pixelWidth);
-    stop_if(err < 0, "failed to set fifth kernel argument. Error %d.", err);
-
-    err = clSetKernelArg(sampleKernel, 5, sizeof(float), &pixelHeight);
-    stop_if(err < 0, "failed to set sixth kernel argument. Error %d.", err);
-
-    err = clSetKernelArg(sampleKernel, 6, sizeof(outputImage), &outputImage);
-    stop_if(err != CL_SUCCESS, "failed to set seventh kernel argument. Error %d.",
+    err = clSetKernelArg(sampleKernel, 4, sizeof(outputImage), &outputImage);
+    stop_if(err != CL_SUCCESS, "failed to set fourth kernel argument. Error %d.",
             err);
 }
 
@@ -182,13 +173,12 @@ Sampler::SamplerImpl::~SamplerImpl() {
     clReleaseDevice(device);
 }
 
-Sampler::Sampler(const World &world, int width, int height, float pixelWidth,
-        float pixelHeight) {
+Sampler::Sampler(const World &world, const Screen &screen, const CmdArgs &args) {
     int err;
     CodeGenerator generator;
 
     // Generate the source that represents the given world.
-    auto genSource = generator.generateCode(world);
+    auto genSource = generator.generateCode(world, screen, args);
 
     // Append the generated source with the sampler.cl source.
 
@@ -216,8 +206,8 @@ Sampler::Sampler(const World &world, int width, int height, float pixelWidth,
     out.close();
 
     // Set up OpenCL.
-    _impl = new SamplerImpl(source.c_str(), source.size(), width, height,
-            pixelWidth, pixelHeight);
+    _impl = new SamplerImpl(source.c_str(), source.size(), args.width(),
+            args.height());
 }
 
 Sampler::~Sampler() {

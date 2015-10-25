@@ -29,6 +29,7 @@
 #define WORLD_HPP
 
 #include "math/math.hpp"
+#include "CmdArgs.hpp"
 #include "Color.hpp"
 #include "PPMImage.hpp"
 #include <fstream>
@@ -42,6 +43,7 @@
 struct Light {
     Point pos;              /// Position of the light.
     Color color;            /// Color of the light.
+    float size;             /// Size of the light.
     float constantAtt;      /// Constant attenuation.
     float linearAtt;        /// Linear attenuation.
     float quadraticAtt;     /// Quadratic attenuation.
@@ -134,10 +136,10 @@ class World {
     std::vector<TextureInfo> _textureInfos;
 
     /// Jumps the camera description from the input (by jumping 4 lines).
-    void ignoreCameraDescription(std::ifstream &in);
+    void ignoreCameraDescription(std::ifstream &in, bool extSpec);
 
     /// Reads the light description from the input.
-    void readLightDescription(std::ifstream &in);
+    void readLightDescription(std::ifstream &in, bool extSpec);
 
     /// Reads the texture description from the input.
     void readTextureDescription(std::ifstream &in, const std::string &inputPath);
@@ -149,8 +151,8 @@ class World {
     void readObjectDescription(std::ifstream &in);
 
 public:
-    /// Inits the world with the info from the input file.
-    World(const std::string &aInput);
+    /// Inits the world with the info from the input args.
+    World(const CmdArgs &args);
 
     std::vector<Light> lights;                      /// Light data.
     std::vector<SolidTexture> solidTextures;        /// Solid texture data.

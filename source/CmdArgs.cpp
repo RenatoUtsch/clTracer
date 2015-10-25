@@ -26,7 +26,9 @@
  */
 
 #include "CmdArgs.hpp"
+#include "error.hpp"
 #include <iostream>
+#include <fstream>
 #include <cstdlib>
 
 char *CmdArgs::getOption(char **begin, char **end, const std::string &option) {
@@ -58,10 +60,24 @@ void CmdArgs::printHelpAndQuit(int argc, char **argv) {
         << "--help\t\tShow help information\n"
         << "-w <arg>\t\tSet the width of the image to <arg>\n"
         << "-h <arg>\t\tSet the height of the image to <arg>\n"
-        << "-aa <arg>\t\tSet the antialiasing level of the image to <arg>";
+        << "-aa <arg>\t\tSet the antialiasing level of the image to <arg>\n"
+        << "-ss <arg>\t\tSet the soft shadows level of the image to <arg>";
 
     std::cerr << std::endl;
     exit(1);
+}
+
+bool CmdArgs::getExtSpec(const std::string &input) {
+    // Get the object file format.
+    std::ifstream in(input);
+    stop_if(!in.is_open(), "failed to open input file: %s", input.c_str());
+    int magic;
+    in >> magic;
+
+    if(magic == 424242)
+        return true;
+    else
+        return false;
 }
 
 CmdArgs::CmdArgs(int argc, char **argv) {
@@ -78,6 +94,8 @@ CmdArgs::CmdArgs(int argc, char **argv) {
     _width = 800;
     _height = 600;
     _aa = 1;
+    _ss = 1;
+    _extSpec = getExtSpec(_input);
 
     // Parse options.
     if(optionExists(argv, argv + argc, "-w")) {
@@ -93,9 +111,26 @@ CmdArgs::CmdArgs(int argc, char **argv) {
         _height = (int) strtol(opt, NULL, 10);
     }
     if(optionExists(argv, argv + argc, "-aa")) {
-        char *opt = getOption(argv, argv + argc,"-aa");
+        char *opt = getOption(argv, argv + argc, "-aa");
         if(!opt) printErrorAndQuit(argc, argv);
 
         _aa = (int) strtol(opt, NULL, 10);
+
+        int result = _aa != 1 && _aa != 2 && _aa != 4 && _aa != 8 && _aa != 16;
+        stop_if(result, "Invalid aa level: must be 1, 2, 4, 8, or 16.");
+    }
+    if(optionExists(argv, argv + argc, "-ss")) {
+        char *opt = getOption(argv, argv + argc, "-ss");
+        if(!opt) printErrorAndQuit(argc, argv);
+
+        if(!_extSpec) {
+            printf("Input file must use extended specification for -ss to be used.\n");
+            exit(1);
+        }
+
+        _ss = (int) strtol(opt, NULL, 10);
+
+        int result = _ss != 1 && _ss != 2 && _ss != 4 && _ss != 8 && _ss != 16;
+        stop_if(result, "Invalid ss level: must be 1, 2, 4, 8 or 16.");
     }
 }

@@ -33,11 +33,10 @@
 
 int main(int argc, char **argv) {
     CmdArgs args {argc, argv};
-    Screen screen {args.inputFilename(), args.width(), args.height()};
-    World world {args.inputFilename()};
+    Screen screen {args};
+    World world {args};
 
-    Sampler sampler {world, args.width(), args.height(), screen.pixelWidth(),
-        screen.pixelHeight()};
+    Sampler sampler {world, screen, args};
     auto image = sampler.sample(screen);
 
     image->writeTo(args.outputFilename());

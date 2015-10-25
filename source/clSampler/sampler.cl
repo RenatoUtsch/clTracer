@@ -106,7 +106,7 @@ float polyhedronIntersection(int id, float4 origin, float4 dir, float maxT,
  * @return The type of intersection.
  */
 IntersectionType trace(float4 origin, float4 direction,
-        IntersectionType exclType, int exclID, __constant float4 *endPos,
+        IntersectionType exclType, int exclID, float4 *endPos,
         int *outIntersectionID, float4 *outIntersection,
         float4 *outIntersectionNormal, bool *outInside);
 
@@ -276,7 +276,7 @@ float polyhedronIntersection(int id, float4 origin, float4 dir, float maxT,
 }
 
 IntersectionType trace(float4 origin, float4 direction,
-        IntersectionType exclType, int exclID, __constant float4 *endPos,
+        IntersectionType exclType, int exclID, float4 *endPos,
         int *outIntersectionID, float4 *outIntersection,
         float4 *outIntersectionNormal, bool *outInside)
 {
@@ -488,53 +488,97 @@ void retStackPop(RetStack *retStack) {
     --retStack->top;
 }
 
+float4 getLightPos(float4 *orig, int k, int i, int j);
+float4 getLightPos(float4 *orig, int k, int i, int j) {
+    float4 pos = lights[k].pos;
+    float4 dir = normalize(pos - *orig);
+
+    // We use dir, which is the pos plane normal and the point pos to calculate
+    // another point in the plane and use it as the right vector.
+    // dir.s0 * pos.x + dir.s1 * pos.y + dir.s2 * pos.z = d
+    float d = dot(dir, pos);
+    // Now find a random point in the plane.
+    float4 point = (float4) (0.0f, 0.0f, 0.0f, 1.0f);
+    if(dir.s0) point.s0 = d / dir.s0;
+    else if(dir.s1) point.s1 = d / dir.s1;
+    else /* if(dir.s2) */ point.s2 = d / dir.s2;
+
+    // Now use the random point as the right direction.
+    float4 right = normalize(point - pos);
+    float4 up = cross(right, dir);
+    float lightSize = lights[k].size;
+
+    // Get the leftmost light point.
+    if(ssLevel > 1) {
+        float factor = lightSize / (2 * ssLevel) - lightSize / 2;
+        float part = lightSize / ssLevel;
+        pos += right * (factor + i * part) + up * (factor + j * part);
+    }
+
+    return pos;
+}
 
 void calculateLocalColor(float4 eyeDir, IntersectionType iType, int id,
         float4 intersection, float4 normal, __constant Material *material,
         float4 *ambDiffColor, float4 *specularColor)
 {
-    *ambDiffColor = lights[0].color * material->ambientCoef;
+    *ambDiffColor = lights[0].color * material->ambientCoef; // Add ambient.
     *specularColor = (float4) (0.0f);
 
     // Trace a ray to all light sources and calculate the local light component.
     // Start at 1 because not counting ambient light.
-    for(int i = 1; i < numLights; ++i) {
-        float4 lightDir = normalize(lights[i].pos - intersection);
-        float dist = distance(lights[i].pos, intersection);
+    // If ssLevel != 1, add an area to the light source.
+    for(int k = 1; k < numLights; ++k) {
+        float4 lightDiff = (float4) (0.0f);
+        float4 lightSpec = (float4) (0.0f);
 
-        // Calculate the light attenuation.
-        float att = 1.0f / (lights[i].constantAtt
-                + dist * lights[i].linearAtt
-                + pow(dist, 2) * lights[i].quadraticAtt);
+        for(int i = 0; i < ssLevel; ++i) {
+            for(int j = 0; j < ssLevel; ++j) {
+                // Calculate the light position counting the light size.
+                float4 lightPos = getLightPos(&intersection, k, i, j);
+                float4 lightDir = normalize(lightPos - intersection);
+                float dist = distance(lightPos, intersection);
 
-        // If the feeler ray does not intersect the surface of any object before
-        // reaching the light, then the object is not shadowed.
-        // If the object intersects, then just use the ambient color and ignore
-        // the others.
-        if(trace(intersection, lightDir, iType, id, &lights[i].pos,
-                    0, 0, 0, 0) == NoIntersection) {
-            // Calculate the diffuse light.
-            float cosDiff = dot(lightDir, normal);
-            if(cosDiff < FLT_EPSILON) cosDiff = 0.0f;
+                // Calculate the light attenuation.
+                float att = 1.0f / (lights[k].constantAtt
+                        + dist * lights[k].linearAtt
+                        + pow(dist, 2) * lights[k].quadraticAtt);
 
-            *ambDiffColor += lights[i].color * cosDiff
-                * material->diffuseCoef * att;
+                // If the feeler ray does not intersect the surface of any object before
+                // reaching the light, then the object is not shadowed.
+                // If the object intersects, then just use the ambient color and ignore
+                // the others.
+                if(trace(intersection, lightDir, iType, id, &lightPos,
+                            0, 0, 0, 0) == NoIntersection) {
+                    // Calculate the diffuse light.
+                    float cosDiff = dot(lightDir, normal);
+                    if(cosDiff < FLT_EPSILON) cosDiff = 0.0f;
 
-            // Calculate the specular light.
+                    lightDiff += lights[k].color * cosDiff
+                        * material->diffuseCoef * att;
 
-            // Halfway vector.
-            float4 halfway = normalize(lightDir + (-1.0f * eyeDir));
+                    // Calculate the specular light.
 
-            // Cos of the angle between the halfway and the normal.
-            float cosSpec = dot(halfway, normal);
-            if(cosSpec < FLT_EPSILON) cosSpec = 0.0f;
+                    // Halfway vector.
+                    float4 halfway = normalize(lightDir + (-1.0f * eyeDir));
 
-            // Shininess.
-            cosSpec = pow(cosSpec, material->specularExp);
+                    // Cos of the angle between the halfway and the normal.
+                    float cosSpec = dot(halfway, normal);
+                    if(cosSpec < FLT_EPSILON) cosSpec = 0.0f;
 
-            *specularColor += lights[i].color * cosSpec
-                * material->specularCoef * att;
+                    // Shininess.
+                    cosSpec = pow(cosSpec, material->specularExp);
+
+                    lightSpec += lights[k].color * cosSpec
+                        * material->specularCoef * att;
+                }
+            }
         }
+
+        lightDiff /= ssLevel * ssLevel;
+        lightSpec /= ssLevel * ssLevel;
+        *ambDiffColor += lightDiff;
+        *specularColor += lightSpec;
     }
 }
 
@@ -659,18 +703,32 @@ float4 runSample(float4 *argOrigin, float4 *argDir) {
  * Samples a ray from origin through direction.
  */
 __kernel void sample(__constant float4 *cOrigin, __constant float4 *topLeft,
-        __constant float4 *up, __constant float4 *right, float pixelWidth,
-        float pixelHeight, __write_only image2d_t out)
+        __constant float4 *up, __constant float4 *right,
+        __write_only image2d_t out)
 {
     int2 coord = (int2) (get_global_id(0), get_global_id(1));
     float4 origin = *cOrigin;
+    float4 color = (float4) (0.0f);
 
-    // First get the point position.
-    float4 dir = *topLeft + (*right * (coord.x * pixelWidth))
+    // First get the pixel position.
+    float4 pixelPos = *topLeft + (*right * (coord.x * pixelWidth))
         - (*up * (coord.y * pixelHeight));
+    float partWidth = pixelWidth / aaLevel;
+    float partHeight = pixelHeight / aaLevel;
 
-    // Now make it a direction vector.
-    dir = normalize(dir - origin);
+    // Distributed raytracing.
+    for(int i = 0; i < aaLevel; ++i) {
+        for(int j = 0; j < aaLevel; ++j) {
+            // Get the position at the inside of the pixel.
+            float4 point = pixelPos + *up * (i * partHeight)
+                + *right * (j * partWidth);
 
-    write_imagef(out, coord, runSample(&origin, &dir));
+            // Now make it a direction vector.
+            float4 dir = normalize(point - origin);
+            color += runSample(&origin, &dir);
+        }
+    }
+
+    color /= aaLevel * aaLevel;
+    write_imagef(out, coord, color);
 }

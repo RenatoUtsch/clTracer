@@ -35,7 +35,8 @@
  */
 class CmdArgs {
     std::string _input, _output, _programName;
-    int _width, _height, _aa;
+    int _width, _height, _aa, _ss;
+    bool _extSpec;
 
     /// Returns the given option or NULL if it wasn't found.
     char *getOption(char **begin, char **end, const std::string &option);
@@ -48,6 +49,9 @@ class CmdArgs {
 
     /// Prints the help message and exits.
     void printHelpAndQuit(int argc, char **argv);
+
+    /// Gets the specification of the input object.
+    bool getExtSpec(const std::string &input);
 
 public:
     /**
@@ -81,9 +85,19 @@ public:
         return _height;
     }
 
-    /// Returns the AntiAliasing level of the screen.
-    inline int AALevel() const {
+    /// Returns the AntiAliasing level.
+    inline int aaLevel() const {
         return _aa;
+    }
+
+    /// Returns the SoftShadows level.
+    inline int ssLevel() const {
+        return _ss;
+    }
+
+    /// Returns if is using the extended object specification.
+    inline bool extSpec() const {
+        return _extSpec;
     }
 };
 

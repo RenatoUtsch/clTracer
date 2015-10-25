@@ -29,6 +29,8 @@
 #define CLSAMPLER_CODEGENERATOR_HPP
 
 #include "../World.hpp"
+#include "../Screen.hpp"
+#include "../CmdArgs.hpp"
 #include <string>
 
 /**
@@ -37,6 +39,9 @@
 class CodeGenerator {
     /// Generates the structures.
     std::string generateStructures(const World &world);
+
+    /// Generates the constants.
+    std::string generateConstants(const Screen &screen, const CmdArgs &args);
 
     /// Generates the lights.
     std::string generateLights(const World &world);
@@ -94,7 +99,8 @@ class CodeGenerator {
 
 public:
     /// Generates code about the given world and returns it.
-    std::string generateCode(const World &world);
+    std::string generateCode(const World &world, const Screen &screen,
+            const CmdArgs &args);
 };
 
 #endif // !CLSAMPLER_CODEGENERATOR_HPP

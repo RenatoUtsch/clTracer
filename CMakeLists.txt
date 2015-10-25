@@ -61,7 +61,7 @@ set( RAYTRACER_DEFINITIONS "${RAYTRACER_DEFINITIONS} ${OpenCL_DEFINITIONS}" )
 set( RAYTRACER_INCLUDE_DIRS ${RAYTRACER_INCLUDE_DIRS} ${OpenCL_INCLUDE_DIRS} )
 set( RAYTRACER_LIBRARIES ${RAYTRACER_LIBRARIES} ${OpenCL_LIBRARIES} )
 
-# Boids sources
+# Raytracer sources
 set( RAYTRACER_SOURCE_FILES "${RAYTRACER_SOURCE_DIR}/source/main.cpp"
                         "${RAYTRACER_SOURCE_DIR}/source/CmdArgs.cpp"
                         "${RAYTRACER_SOURCE_DIR}/source/PPMImage.cpp"

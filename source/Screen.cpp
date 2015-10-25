@@ -28,9 +28,11 @@
 #include "Screen.hpp"
 #include "error.hpp"
 #include <fstream>
+#include <limits>
 
-Screen::Screen(const std::string &aInput, int aWidthInPixels, int aHeightInPixels)
-        : _widthInPixels(aWidthInPixels), _heightInPixels(aHeightInPixels),
+Screen::Screen(const CmdArgs &args)
+        : _widthInPixels(args.width()), _heightInPixels(args.height()),
+          _aaLevel(args.aaLevel()),
           _recalculateTopLeft(true), _recalculateCameraPos(true),
           _recalculateUpVector(true), _recalculateRightVector(true) {
 
@@ -40,8 +42,12 @@ Screen::Screen(const std::string &aInput, int aWidthInPixels, int aHeightInPixel
     _linearizedRightVector = new float[4];
 
     // Read the input file.
-    std::ifstream in(aInput);
-    stop_if(!in.is_open(), "failed to open input file (%s).", aInput.c_str());
+    std::string input = args.inputFilename();
+    std::ifstream in(input);
+    stop_if(!in.is_open(), "failed to open input file (%s).", input.c_str());
+
+    if(args.extSpec())
+        in.ignore(std::numeric_limits<std::streamsize>::max(), in.widen('\n'));
 
     in >> _cameraPos.x >> _cameraPos.y >> _cameraPos.z;
     in >> _screenCenter.x >> _screenCenter.y >> _screenCenter.z;
