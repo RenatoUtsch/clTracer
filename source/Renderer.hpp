@@ -25,34 +25,56 @@
  * THE SOFTWARE.
  */
 
+#ifndef RENDERER_HPP
+#define RENDERER_HPP
+
 #include "CmdArgs.hpp"
-#include "PPMImage.hpp"
-#include "Renderer.hpp"
-#include "Screen.hpp"
-#include "Sampler.hpp"
 #include "World.hpp"
+#include "Screen.hpp"
 
-Renderer *gRenderer;
+struct GLFWwindow;
+class Sampler;
 
-int main(int argc, char **argv) {
-    CmdArgs args {argc, argv};
-    Screen screen {args};
-    World world {args};
+/**
+ * Realtime OpenCL Renderer.
+ */
+class Renderer {
+    Sampler *_sampler;
+    GLFWwindow *_window;
+    unsigned _texture;
+    Screen *_screen;
 
-    if(args.realtime()) {
-        Renderer renderer {world, screen, args};
-        gRenderer = &renderer;
+    /// Initializes OpenGL.
+    void initGL(const CmdArgs &args);
 
-        renderer.run();
-    }
-    else {
-        Sampler sampler {world, screen, args};
-        sampler.updateScreen(screen);
-        sampler.sample();
-        auto image = sampler.getImage();
+    /// Initializes the texture.
+    void initTexture(const CmdArgs &args);
 
-        image->writeTo(args.outputFilename());
-    }
+    /// Finishes OpenGL.
+    void finishGL();
 
-    return 0;
-}
+    /// Finishes the texture.
+    void finishTexture();
+
+    /// Renders the texture to screen.
+    void render();
+
+public:
+    /**
+     * Initializes the renderer.
+     */
+    Renderer(const World &world, Screen &screen, const CmdArgs &args);
+
+    /// Destructor.
+    ~Renderer();
+
+    /**
+     * Runs the renderer.
+     */
+    void run();
+};
+
+/// Global renderer.
+extern Renderer *gRenderer;
+
+#endif // !RENDERER_HPP

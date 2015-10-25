@@ -47,13 +47,13 @@ if( UNIX )
 endif()
 
 # Compile GLFW.
-#set( GLFW_BUILD_EXAMPLES OFF CACHE BOOL "no examples" )
-#set( GLFW_BUILD_TESTS OFF CACHE BOOL "no tests" )
-#set( GLFW_BUILD_DOCS OFF CACHE BOOL "no docs" )
-#set( GLFW_INSTALL OFF CACHE BOOL "no installation" )
-#add_subdirectory( "${RAYTRACER_SOURCE_DIR}/3rdparty/glfw" )
-#set( RAYTRACER_INCLUDE_DIRS ${RAYTRACER_INCLUDE_DIRS} "${RAYTRACER_SOURCE_DIR}/3rdparty/glfw/include" )
-#set( RAYTRACER_LIBRARIES ${RAYTRACER_LIBRARIES} glfw ${GLFW_LIBRARIES} )
+set( GLFW_BUILD_EXAMPLES OFF CACHE BOOL "no examples" )
+set( GLFW_BUILD_TESTS OFF CACHE BOOL "no tests" )
+set( GLFW_BUILD_DOCS OFF CACHE BOOL "no docs" )
+set( GLFW_INSTALL OFF CACHE BOOL "no installation" )
+add_subdirectory( "${RAYTRACER_SOURCE_DIR}/3rdparty/glfw" )
+set( RAYTRACER_INCLUDE_DIRS ${RAYTRACER_INCLUDE_DIRS} "${RAYTRACER_SOURCE_DIR}/3rdparty/glfw/include" )
+set( RAYTRACER_LIBRARIES ${RAYTRACER_LIBRARIES} glfw ${GLFW_LIBRARIES} )
 
 # Find OpenCL
 find_package( OpenCL REQUIRED )
@@ -65,6 +65,7 @@ set( RAYTRACER_LIBRARIES ${RAYTRACER_LIBRARIES} ${OpenCL_LIBRARIES} )
 set( RAYTRACER_SOURCE_FILES "${RAYTRACER_SOURCE_DIR}/source/main.cpp"
                         "${RAYTRACER_SOURCE_DIR}/source/CmdArgs.cpp"
                         "${RAYTRACER_SOURCE_DIR}/source/PPMImage.cpp"
+                        "${RAYTRACER_SOURCE_DIR}/source/Renderer.cpp"
                         "${RAYTRACER_SOURCE_DIR}/source/Screen.cpp"
                         "${RAYTRACER_SOURCE_DIR}/source/World.cpp"
                         "${RAYTRACER_SOURCE_DIR}/source/clSampler/clUtils.c"

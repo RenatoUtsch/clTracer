@@ -30,6 +30,7 @@
 #include "../utils.hpp"
 #include "CodeGenerator.hpp"
 #include "OpenCL.h"
+#include <GLFW/glfw3.h>
 #include <fstream>
 
 #define XSTR(s) #s
@@ -127,15 +128,22 @@ Sampler::SamplerImpl::SamplerImpl(const char *source, long sourceSize,
     stop_if(err != CL_SUCCESS, "failed to create the sample kernel right vector. "
             "Error %d.", err);
 
-    cl_image_format rgbaFormat;
-    rgbaFormat.image_channel_order = CL_RGBA;
-    rgbaFormat.image_channel_data_type = CL_UNORM_INT8;
+    if(texture) {
+        outputImage = clCreateFromGLTexture2D(context, CL_MEM_WRITE_ONLY,
+                GL_TEXTURE_2D, 0, texture, 0);
+        stop_if(err != CL_SUCCESS, "failed to create output image from GL texture.");
+    }
+    else {
+        cl_image_format rgbaFormat;
+        rgbaFormat.image_channel_order = CL_RGBA;
+        rgbaFormat.image_channel_data_type = CL_UNORM_INT8;
 
-    outputImage = clCreateImage2D(context, CL_MEM_WRITE_ONLY,
-            &rgbaFormat, width, height, 0, NULL, &err);
-    stop_if(err != CL_SUCCESS,
-            "failed to create the sample kernel output image. Error %d.", err);
-    stop_if(!outputImage, "SHIT");
+        outputImage = clCreateImage2D(context, CL_MEM_WRITE_ONLY,
+                &rgbaFormat, width, height, 0, NULL, &err);
+        stop_if(err != CL_SUCCESS,
+                "failed to create the sample kernel output image. Error %d.", err);
+        stop_if(!outputImage, "SHIT");
+    }
 
     err = clSetKernelArg(sampleKernel, 0, sizeof(originBuffer), &originBuffer);
     stop_if(err < 0, "failed to set first kernel argument. Error %d.", err);
@@ -148,10 +156,6 @@ Sampler::SamplerImpl::SamplerImpl(const char *source, long sourceSize,
 
     err = clSetKernelArg(sampleKernel, 3, sizeof(rightBuffer), &rightBuffer);
     stop_if(err < 0, "failed to set fourth kernel argument. Error %d.", err);
-
-    err = clSetKernelArg(sampleKernel, 4, sizeof(outputImage), &outputImage);
-    stop_if(err != CL_SUCCESS, "failed to set fourth kernel argument. Error %d.",
-            err);
 }
 
 Sampler::SamplerImpl::~SamplerImpl() {
@@ -270,16 +274,37 @@ void Sampler::updateScreen(Screen &screen) {
 }
 
 void Sampler::sample() {
+    int err;
     size_t work_size[2] = {(size_t) _impl->width, (size_t) _impl->height};
     size_t global_offset[2] = {0, 0};
+
+    // Acquire the output image.
+    if(_impl->texture) {
+        err = clEnqueueAcquireGLObjects(_impl->queue, 1, &_impl->outputImage, 0,
+                NULL, NULL);
+        stop_if(err != CL_SUCCESS, "failed to acquire the texture.");
+    }
+
+    // Set the output image argument.
+    err = clSetKernelArg(_impl->sampleKernel, 4, sizeof(_impl->outputImage),
+            &_impl->outputImage);
+    stop_if(err != CL_SUCCESS, "failed to set fourth kernel argument. Error %d.",
+            err);
 
     // Start benchmarking the execution.
     if(!_impl->texture)
         _impl->time = getTime();
 
-    int err = clEnqueueNDRangeKernel(_impl->queue, _impl->sampleKernel, 2,
+    err = clEnqueueNDRangeKernel(_impl->queue, _impl->sampleKernel, 2,
             global_offset, work_size, NULL, 0, NULL, NULL);
     stop_if(err != CL_SUCCESS, "failed to enqueue kernel execution. Error %d.", err);
+
+    // Release the output image.
+    if(_impl->texture) {
+        err = clEnqueueReleaseGLObjects(_impl->queue, 1, &_impl->outputImage, 0,
+                NULL, NULL);
+        stop_if(err != CL_SUCCESS, "failed to release the texture.");
+    }
 
     // Wait for everything to end.
     clFinish(_impl->queue);
