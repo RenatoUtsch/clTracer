@@ -36,7 +36,7 @@
 class CmdArgs {
     std::string _input, _output, _programName;
     int _width, _height, _aa, _ss;
-    bool _extSpec;
+    bool _extSpec, _realtime;
 
     /// Returns the given option or NULL if it wasn't found.
     char *getOption(char **begin, char **end, const std::string &option);
@@ -98,6 +98,11 @@ public:
     /// Returns if is using the extended object specification.
     inline bool extSpec() const {
         return _extSpec;
+    }
+
+    /// Returns if run is to be realtime.
+    inline bool realtime() const {
+        return _realtime;
     }
 };
 

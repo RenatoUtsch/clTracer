@@ -37,7 +37,9 @@ int main(int argc, char **argv) {
     World world {args};
 
     Sampler sampler {world, screen, args};
-    auto image = sampler.sample(screen);
+    sampler.updateScreen(screen);
+    sampler.sample();
+    auto image = sampler.getImage();
 
     image->writeTo(args.outputFilename());
 

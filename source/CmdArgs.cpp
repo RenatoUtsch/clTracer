@@ -58,6 +58,7 @@ void CmdArgs::printHelpAndQuit(int argc, char **argv) {
         << "output\t\tOutput image filename\n"
         << "\nOptions:\n"
         << "--help\t\tShow help information\n"
+        << "--realtime\t\tRun raytracer in realtime\n"
         << "-w <arg>\t\tSet the width of the image to <arg>\n"
         << "-h <arg>\t\tSet the height of the image to <arg>\n"
         << "-aa <arg>\t\tSet the antialiasing level of the image to <arg>\n"
@@ -96,8 +97,12 @@ CmdArgs::CmdArgs(int argc, char **argv) {
     _aa = 1;
     _ss = 1;
     _extSpec = getExtSpec(_input);
+    _realtime = false;
 
     // Parse options.
+    if(optionExists(argv, argv + argc, "--realtime")) {
+        _realtime = true;
+    }
     if(optionExists(argv, argv + argc, "-w")) {
         char *opt = getOption(argv, argv + argc, "-w");
         if(!opt) printErrorAndQuit(argc, argv);

@@ -54,17 +54,31 @@ public:
      * constant through all the execution of the sampler.
      * @param screen Screen properties.
      * @param args Program command line arguments.
+     * @param texture If is to render to texture, this is the texture ID where
+     * the raytracer will render to.
      */
-    Sampler(const World &world, const Screen &screen, const CmdArgs &args);
+    Sampler(const World &world, const Screen &screen, const CmdArgs &args,
+            unsigned texture = 0);
 
     ~Sampler();
 
     /**
-     * Samples all the pixels from the given screen and returns an image in
-     * 32bit RGBA format from it.
+     * Updates the screen used to sample the pixels. Must be called before
+     * sample().
+     */
+    void updateScreen(Screen &screen);
+
+    /**
+     * Samples all the pixels from the screen set up in updateScreen().
      * This is the actual raytracing call.
      */
-    std::shared_ptr<PPMImage> sample(Screen &screen);
+    void sample();
+
+    /**
+     * Returns the image from the last sample. sample() must have been called
+     * before this call.
+     */
+    std::shared_ptr<PPMImage> getImage();
 };
 
 #endif // !SAMPLER_HPP
