@@ -106,7 +106,7 @@ Sampler::SamplerImpl::SamplerImpl(const char *source, long sourceSize,
 
     program = cluBuildProgram(context, device, source, sourceSize,
             "-Werror -cl-strict-aliasing -cl-mad-enable -cl-no-signed-zeros "
-            "-cl-unsafe-math-optimizations "
+            "-cl-unsafe-math-optimizations -cl-finite-math-only -cl-fast-relaxed-math "
             "-DMAX_DEPTH=" STR(MAX_DEPTH), &err);
     stop_if(err < 0, "failed to compile the OpenCL kernel.");
 
