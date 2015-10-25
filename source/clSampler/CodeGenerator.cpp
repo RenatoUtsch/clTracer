@@ -407,8 +407,8 @@ std::string CodeGenerator::writePoint(const Point &point) {
     code << "(float4) ("
         << writeFloat(point.x) << ", "
         << writeFloat(point.y) << ", "
-        << writeFloat(point.z)
-        << ", 1.0f)";
+        << writeFloat(point.z) << ", "
+        << writeFloat(point.w) << ")";
 
     return code.str();
 }
