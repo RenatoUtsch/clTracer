@@ -161,6 +161,16 @@ void retStackPush(RetStack *retStack);
 void retStackPop(RetStack *retStack);
 
 /**
+ * Returns the light position taking into account its area.
+ * @param orig The ray origin.
+ * @param k The index of the light source.
+ * @param i For calculating the returned position. 0 <= i < ssLevel
+ * @param j For calculating the returned position. 0 <= j < ssLevel
+ * @return The position of the light.
+ */
+float4 getLightPos(float4 *orig, int k, int i, int j);
+
+/**
  * Calculates the local color component.
  * @param eyeDir Direction from the eye (camera).
  * @param iType Type of the first intersection.
@@ -488,7 +498,6 @@ void retStackPop(RetStack *retStack) {
     --retStack->top;
 }
 
-float4 getLightPos(float4 *orig, int k, int i, int j);
 float4 getLightPos(float4 *orig, int k, int i, int j) {
     float4 pos = lights[k].pos;
     float4 dir = normalize(pos - *orig);
@@ -615,7 +624,7 @@ void runSampleStage0(Stack *stack, RetStack *retStack, State *t) {
 
     t->reflectionColor = (float4) (0.0f);
     t->transmissionColor = (float4) (0.0f);
-    if(t->depth > 0) {
+    if(t->depth > 0 && materials[t->materialID].reflectionCoef > 0.0f) {
         // Reflected component added in recursively.
         float4 reflDir = getReflectionDirection(t->dir, t->normal);
         t->stage = 1;
@@ -643,7 +652,8 @@ void runSampleStage1(Stack *stack, RetStack *retStack, State *t) {
 
     // Transmission component added in recursively.
     float4 transDir;
-    if(getTransmissionDirection(refrRate, t->dir, t->normal, &transDir)) {
+    if(getTransmissionDirection(refrRate, t->dir, t->normal, &transDir)
+            && materials[t->materialID].transmissionCoef > 0.0f) {
         t->stage = 2;
         stackPush(stack); // Set this for when the recursion returns.
 
