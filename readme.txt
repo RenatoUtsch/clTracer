@@ -36,6 +36,14 @@ with the project were all converted to test<1-6>_ext.in files that run with
 the -ss option. The only differences between the file formats are a 424242 magic
 number at the beginning of the file and an added light size field to the lights.
 
+- In case the execution fails, try commenting the lines 103 and 104 (that
+enable optimizations) of source/clSampler/Sampler.cpp, so that the string passed
+as parameter is only "-DMAX_DEPTH=" STR(MAX_DEPTH). This is known to work in
+some Intel CPUs.
+
+- To force OpenCL to execute on the CPU instead of the GPU change the
+SAMPLER_DEVICE_TYPE in source/clSampler/Sampler.cpp at lines 49~53.
+
 == Implementation Decisions
 ===========================
 This implementation implements all the minimum requirements (70% of the total
