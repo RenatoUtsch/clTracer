@@ -47,7 +47,7 @@ PPMImage::PPMImage(uint8_t *aImage, int aWidth, int aHeight)
 }
 
 PPMImage::PPMImage(const std::string &filename) {
-    std::ifstream in(filename);
+    std::ifstream in(filename.c_str());
     stop_if(!in, "failed to open ppm file: %s", filename.c_str());
 
     std::string line;
@@ -85,11 +85,11 @@ PPMImage::PPMImage(const std::string &filename) {
 }
 
 void PPMImage::writeTo(const std::string &filename) {
-    std::ofstream out(filename);
+    std::ofstream out(filename.c_str());
     stop_if(!out.is_open(), "failed to open output file (%s).", filename.c_str());
 
     // PPM header.
-    out << "P6\n";
+    out << "P3\n";
     out << "# Distributed Raytracer by RenatoUtsch <renatoutsch@gmail.com>\n";
     out << _width << " " << _height << "\n";
     out << "255\n";
@@ -98,7 +98,9 @@ void PPMImage::writeTo(const std::string &filename) {
     for(int i = 0; i < _height; ++i) {
         for(int j = 0; j < _width; ++j) {
             data[i][j].toRGB(&r, &g, &b);
-            out << r << g << b;
+            if(j != 0) out << " ";
+            out << (int) r << " " << (int) g << " " << (int) b;
         }
+        out << "\n";
     }
 }
