@@ -80,22 +80,20 @@ PPMImage::PPMImage(const std::string &filename) {
 }
 
 void PPMImage::writeTo(const std::string &filename) {
-    std::ofstream out(filename.c_str());
+    std::ofstream out(filename.c_str(), std::ofstream::binary);
     stop_if(!out.is_open(), "failed to open output file (%s).", filename.c_str());
 
     // PPM header.
-    out << "P3\n";
-    out << "# Distributed Raytracer by RenatoUtsch <renatoutsch@gmail.com>\n";
+    out << "P6\n";
+    out << "# clTracer by RenatoUtsch <renatoutsch@gmail.com>\n";
     out << _width << " " << _height << "\n";
     out << "255\n";
 
-    uint8_t r, g, b;
+    unsigned char color[3];
     for(int i = 0; i < _height; ++i) {
         for(int j = 0; j < _width; ++j) {
-            data[i][j].toRGB(&r, &g, &b);
-            if(j != 0) out << " ";
-            out << (int) r << " " << (int) g << " " << (int) b;
+            data[i][j].toRGB(&color[0], &color[1], &color[2]);
+            out.write((char *) color, 3);
         }
-        out << "\n";
     }
 }
