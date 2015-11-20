@@ -27,14 +27,7 @@
 
 Screen::Screen(const CmdArgs &args)
         : _widthInPixels(args.width()), _heightInPixels(args.height()),
-          _aaLevel(args.aaLevel()),
-          _recalculateTopLeft(true), _recalculateCameraPos(true),
-          _recalculateUpVector(true), _recalculateRightVector(true) {
-
-    _linearizedTopLeftPixel = new float[4];
-    _linearizedCameraPos = new float[4];
-    _linearizedUpVector = new float[4];
-    _linearizedRightVector = new float[4];
+          _aaLevel(args.aaLevel()) {
 
     // Read the input file.
     std::string input = args.inputFilename();
@@ -61,6 +54,28 @@ Screen::Screen(const CmdArgs &args)
     _height = 2 * tan(toRads(_fovy / 2.0f)) * d;
     _width = (_height * _widthInPixels) / _heightInPixels;
 
+    // Save the top left pixel.
+    Point topLeft = topLeftPixel();
+    _linearizedTopLeftPixel[0] = topLeft.x;
+    _linearizedTopLeftPixel[1] = topLeft.y;
+    _linearizedTopLeftPixel[2] = topLeft.z;
+    _linearizedTopLeftPixel[3] = 1.0f;
+
+    _linearizedCameraPos[0] = _cameraPos.x;
+    _linearizedCameraPos[1] = _cameraPos.y;
+    _linearizedCameraPos[2] = _cameraPos.z;
+    _linearizedCameraPos[3] = 1.0f;
+
+    _linearizedUpVector[0] = _up.x;
+    _linearizedUpVector[1] = _up.y;
+    _linearizedUpVector[2] = _up.z;
+    _linearizedUpVector[3] = 0.0f;
+
+    _linearizedRightVector[0] = _right.x;
+    _linearizedRightVector[1] = _right.y;
+    _linearizedRightVector[2] = _right.z;
+    _linearizedRightVector[3] = 0.0f;
+
     // If the distance from the camera to the center of the screen is d and
     // half the fovy is f, the maximum height of the screen is:
     // A schematic (from the side);
@@ -85,60 +100,3 @@ Screen::Screen(const CmdArgs &args)
     // Then 2w = (2h*m)/n
 }
 
-Screen::~Screen() {
-    delete [] _linearizedTopLeftPixel;
-    delete [] _linearizedCameraPos;
-    delete [] _linearizedUpVector;
-    delete [] _linearizedRightVector;
-}
-
-const float *Screen::linearizedTopLeftPixel() {
-    if(_recalculateTopLeft) {
-        Point topLeft = topLeftPixel();
-        _linearizedTopLeftPixel[0] = topLeft.x;
-        _linearizedTopLeftPixel[1] = topLeft.y;
-        _linearizedTopLeftPixel[2] = topLeft.z;
-        _linearizedTopLeftPixel[3] = 1.0f;
-        _recalculateTopLeft = false;
-    }
-
-    return _linearizedTopLeftPixel;
-}
-
-const float *Screen::linearizedCameraPos() {
-    if(_recalculateCameraPos) {
-        _linearizedCameraPos[0] = _cameraPos.x;
-        _linearizedCameraPos[1] = _cameraPos.y;
-        _linearizedCameraPos[2] = _cameraPos.z;
-        _linearizedCameraPos[3] = 1.0f;
-        _recalculateCameraPos = false;
-    }
-
-    return _linearizedCameraPos;
-}
-
-const float *Screen::linearizedUpVector() {
-    if(_recalculateUpVector) {
-        _linearizedUpVector[0] = _up.x;
-        _linearizedUpVector[1] = _up.y;
-        _linearizedUpVector[2] = _up.z;
-        _linearizedUpVector[3] = 0.0f;
-
-        _recalculateUpVector = false;
-    }
-
-    return _linearizedUpVector;
-}
-
-const float *Screen::linearizedRightVector() {
-    if(_recalculateRightVector) {
-        _linearizedRightVector[0] = _right.x;
-        _linearizedRightVector[1] = _right.y;
-        _linearizedRightVector[2] = _right.z;
-        _linearizedRightVector[3] = 0.0f;
-
-        _recalculateRightVector = false;
-    }
-
-    return _linearizedRightVector;
-}

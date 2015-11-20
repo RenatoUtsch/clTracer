@@ -30,14 +30,12 @@
 int main(int argc, char **argv) {
     std::ios_base::sync_with_stdio(false);
 
-    CmdArgs args {argc, argv};
-    Screen screen {args};
-    World world {args};
+    CmdArgs args{argc, argv};
+    Screen screen{args};
+    World world{args};
 
-    Sampler sampler {world, screen, args};
-    sampler.updateScreen(screen);
-    sampler.sample();
-    auto image = sampler.getImage();
+    Sampler sampler{world, screen, args};
+    auto image = sampler.sample();
 
     image->writeTo(args.outputFilename());
 

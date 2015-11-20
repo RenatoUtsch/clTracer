@@ -37,10 +37,10 @@
  */
 class Sampler {
     /// Sampler implementation.
-    struct SamplerImpl;
+    class SamplerImpl;
 
-    /// Pointer to the sampler implementation. This is actually pimpl.
-    SamplerImpl *_impl;
+    /// Pointer to the sampler implementation.
+    std::unique_ptr<SamplerImpl> _impl;
 
 public:
     /**
@@ -55,22 +55,11 @@ public:
     ~Sampler();
 
     /**
-     * Updates the screen used to sample the pixels. Must be called before
-     * sample().
+     * Samples all the pixels from the screen used when creating this class.
+     * Returns the sampled image.
+     * This is the actual path tracing call.
      */
-    void updateScreen(Screen &screen);
-
-    /**
-     * Samples all the pixels from the screen set up in updateScreen().
-     * This is the actual raytracing call.
-     */
-    void sample();
-
-    /**
-     * Returns the image from the last sample. sample() must have been called
-     * before this call.
-     */
-    std::shared_ptr<PPMImage> getImage();
+    std::unique_ptr<PPMImage> sample();
 };
 
 #endif // !SAMPLER_HPP

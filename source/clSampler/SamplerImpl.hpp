@@ -27,28 +27,39 @@
 #include "../utils.hpp"
 #include "OpenCL.h"
 
-struct Sampler::SamplerImpl {
-    int width, height;
-    cl_platform_id platform;
-    cl_device_id device;
-    cl_context context;
-    cl_command_queue queue;
-    cl_program program;
+class Sampler::SamplerImpl {
+    int _width, _height;
+    cl_platform_id _platform;
+    cl_device_id _device;
+    cl_context _context;
+    cl_command_queue _queue;
+    cl_program _program;
 
-    cl_kernel sampleKernel; /// Raytracer entry point.
+    cl_kernel _sampleKernel; /// Path Tracer entry point.
 
-    cl_mem originBuffer;    /// Origin of the ray.
-    cl_mem topLeftBuffer;   /// Top left pixel position.
-    cl_mem upBuffer;        /// Up vector
-    cl_mem rightBuffer;     /// Right vector
-    cl_mem outputImage;     /// Output image.
+    cl_mem _originBuffer;    /// Origin of the ray.
+    cl_mem _topLeftBuffer;   /// Top left pixel position.
+    cl_mem _upBuffer;        /// Up vector
+    cl_mem _rightBuffer;     /// Right vector
+    cl_mem _outputImage;     /// Output image.
 
-    Time time;              /// Used for benchmarking.
+    std::string generateSource(const World &world, const Screen &screen,
+            const CmdArgs &args);
+    void constructBuffers(const Screen &screen);
 
-    /// Sets up OpenCL with the given program source code.
-    SamplerImpl(const char *source, long sourceSize, int _width, int _height);
+public:
+    SamplerImpl() = delete;
+
+    /**
+     * Creates the SamplerImpl object.
+     * Look at the Sampler() constructor for more information.
+     */
+    SamplerImpl(const World &world, const Screen &screen, const CmdArgs &args);
 
     ~SamplerImpl();
+
+    /// Samples all pixels and returns the image.
+    std::unique_ptr<PPMImage> sample();
 };
 
 #endif // !SAMPLERIMPL_HPP

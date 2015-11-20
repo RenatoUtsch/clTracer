@@ -32,6 +32,7 @@
  * This class stores the data needed to generate the position and direction of
  * each pixel from a viewpoint.
  * This class also has functions for moving the viewpoint around the scene.
+ * TODO: This class needs a refactor. It needs to return only float* values.
  */
 class Screen {
     // Data that is accessible.
@@ -46,18 +47,10 @@ class Screen {
     int _aaLevel;           /// Antialiasing level.
 
     // Data that may be recalculated when being accessed.
-    float *_linearizedTopLeftPixel;     /// Array with the top left pixel.
-    float *_linearizedCameraPos;        /// Array with the camera position.
-    float *_linearizedUpVector;         /// Array with the up vector.
-    float *_linearizedRightVector;      /// Array with the right vector.
-    bool _recalculateTopLeft;   /// If needs to recalculate the position of the
-                                /// top left pixel before linearizedTopLeftPixel().
-    bool _recalculateCameraPos; /// If needs to recalculate the camera position
-                                /// before linearizedCameraPos()
-    bool _recalculateUpVector;  /// If needs to recalculate the up vector before
-                                /// linearizedUpVector();
-    bool _recalculateRightVector; /// If needs to recalculate the right vector
-                                /// before linearizedRightVector();
+    float _linearizedTopLeftPixel[4];      /// Array with the top left pixel.
+    float _linearizedCameraPos[4];         /// Array with the camera position.
+    float _linearizedUpVector[4];          /// Array with the up vector.
+    float _linearizedRightVector[4];       /// Array with the right vector.
 
     // Data used for internal calculations.
     float _fovy;                /// Field of view, in degrees.
@@ -67,8 +60,6 @@ public:
      * Initializes the screen.
      */
     Screen(const CmdArgs &args);
-
-    ~Screen();
 
     /**
      * Returns the camera position.
@@ -165,98 +156,38 @@ public:
         return p;
     }
 
-    /**
-     * Moves the camera position to the left the given world coordinates.
-     */
-    void moveLeft(float distance);
-
-    /**
-     * Moves the camera position to the right the given world coordinates.
-     */
-    void moveRight(float distance);
-
-    /**
-     * Moves the camera position up the given world coordinates.
-     */
-    void moveUp(float distance);
-
-    /**
-     * Moves the camera position down the given world coordinates.
-     */
-    void moveDown(float distance);
-
-    /**
-     * Rotates the camera to the left the given angle (in degrees).
-     */
-    void rotateLeft(float degrees);
-
-    /**
-     * Rotates the camera to the right the given angle (in degrees).
-     */
-    void rotateRight(float degrees);
-
-    /**
-     * Rotates the camera up the given angle (in degrees
-     */
-    void rotateUp(float degrees);
-
-    /**
-     * Rotates the camera down the given angle (in degrees).
-     */
-    void rotateDown(float degrees);
-
     /// Size of a linearized vector.
     const size_t LinearizedVectorSize = 4 * sizeof(float);
-
-    /**
-     * If needs to update the top left pixel position.
-     */
-    inline bool linearizedTopLeftPixelNeedsUpdate() const {
-        return _recalculateTopLeft;
-    }
-
-    /**
-     * If needs to update the linearized camera pos.
-     */
-    inline bool linearizedCameraPosNeedsUpdate() const {
-        return _recalculateCameraPos;
-    }
-
-    /**
-     * If needs to update the linearized up vector.
-     */
-    inline bool linearizedUpVectorNeedsUpdate() const {
-        return _recalculateUpVector;
-    }
-
-    /**
-     * If needs to update teh linearized right vector.
-     */
-    inline bool linearizedRightVectorNeedsUpdate() const {
-        return _recalculateRightVector;
-    }
 
     /**
      * Returns the linearized array with the position of the top left pixel,
      * using 4 floats.
      */
-    const float *linearizedTopLeftPixel();
+    inline const float *linearizedTopLeftPixel() const {
+        return _linearizedTopLeftPixel;
+    }
 
     /**
      * Returns the linearized array with the linearized position of the camera,
      * using 4 floats.
      */
-    const float *linearizedCameraPos();
+    const float *linearizedCameraPos() const {
+        return _linearizedCameraPos;
+    }
 
     /**
      * Returns the linearized array with the up vector, using 4 floats.
      */
-    const float *linearizedUpVector();
+    const float *linearizedUpVector() const {
+        return _linearizedUpVector;
+    }
 
     /**
      * Returns the linearized array with the right vector, using 4 floats.
      */
-    const float *linearizedRightVector();
+    const float *linearizedRightVector() const {
+        return _linearizedRightVector;
+    }
 };
 
 #endif // !SCREEN_HPP
