@@ -53,6 +53,7 @@ set( CLTRACER_SOURCE_FILES "${CLTRACER_SOURCE_DIR}/source/main.cpp"
     "${CLTRACER_SOURCE_DIR}/source/World.cpp"
     "${CLTRACER_SOURCE_DIR}/source/clSampler/clUtils.c"
     "${CLTRACER_SOURCE_DIR}/source/clSampler/CodeGenerator.cpp"
+    "${CLTRACER_SOURCE_DIR}/source/clSampler/SamplerImpl.cpp"
     "${CLTRACER_SOURCE_DIR}/source/clSampler/Sampler.cpp" )
 
 # Compile
