@@ -1,9 +1,4 @@
 /*
- * Author: Renato Utsch Gonçalves
- * Computer Science, UFMG
- * Advanced Computer Graphics
- * Practical exercise 1 - Distributed Ray Tracer
- *
  * Copyright (c) 2015 Renato Utsch <renatoutsch@gmail.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -45,7 +40,7 @@ bool CmdArgs::optionExists(char **begin, char **end, const std::string &option) 
 
 void CmdArgs::printErrorAndQuit(int argc, char **argv) {
     std::cerr << argv[0] << ": invalid command line arguments\n"
-        << "Try '" << argv[0] << "--help' for more information."
+        << "Try '" << argv[0] << " --help' for more information."
         << std::endl;
     exit(1);
 }
@@ -97,12 +92,8 @@ CmdArgs::CmdArgs(int argc, char **argv) {
     _aa = 1;
     _ss = 1;
     _extSpec = getExtSpec(_input);
-    _realtime = false;
 
     // Parse options.
-    if(optionExists(argv, argv + argc, "--realtime")) {
-        _realtime = true;
-    }
     if(optionExists(argv, argv + argc, "-w")) {
         char *opt = getOption(argv, argv + argc, "-w");
         if(!opt) printErrorAndQuit(argc, argv);

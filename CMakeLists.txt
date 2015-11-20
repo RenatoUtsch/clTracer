@@ -1,10 +1,5 @@
 ##
- # Author: Renato Utsch Gonçalves
- # Computer Science, UFMG
- # Advanced Computer Graphics
- # Practical exercise 1 - Distributed Ray Tracer
- #
- # Copyright (c) 2015 Renato Utsch
+ # Copyright (c) 2015 Renato Utsch <renatoutsch@gmail.com>
  #
  # Permission is hereby granted, free of charge, to any person obtaining a copy
  # of this software and associated documentation files (the "Software"), to deal
@@ -25,58 +20,46 @@
  # THE SOFTWARE.
  ##
 
-# CMakeLists.txt file for compiling the project with CMake.
-
 # Basic configuration
 cmake_minimum_required( VERSION 2.6 FATAL_ERROR )
-project( raytracer C CXX )
+project( clTracer C CXX )
 
-set( RAYTRACER_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR} )
-set( RAYTRACER_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR} )
+set( CLTRACER_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR} )
+set( CLTRACER_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR} )
 
-set( RAYTRACER_DEFINITIONS "" )
-set( RAYTRACER_INCLUDE_DIRS "" )
-set( RAYTRACER_LIBRARIES "" )
+set( CLTRACER_DEFINITIONS "" )
+set( CLTRACER_INCLUDE_DIRS "" )
+set( CLTRACER_LIBRARIES "" )
 
 # Add gcc options
 if( UNIX )
-    set( RAYTRACER_DEFINITIONS
-        "${RAYTRACER_DEFINITIONS} -Ofast -Wall -Wextra -Werror -pedantic -Wno-unused-parameter -Wno-deprecated-declarations" )
+    set( CLTRACER_DEFINITIONS
+        "${CLTRACER_DEFINITIONS} -Ofast -Wall -Wextra -Werror -pedantic -Wno-unused-parameter -Wno-deprecated-declarations" )
     set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14" )
     set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99" )
 endif()
 
-# Compile GLFW.
-set( GLFW_BUILD_EXAMPLES OFF CACHE BOOL "no examples" )
-set( GLFW_BUILD_TESTS OFF CACHE BOOL "no tests" )
-set( GLFW_BUILD_DOCS OFF CACHE BOOL "no docs" )
-set( GLFW_INSTALL OFF CACHE BOOL "no installation" )
-add_subdirectory( "${RAYTRACER_SOURCE_DIR}/3rdparty/glfw" )
-set( RAYTRACER_INCLUDE_DIRS ${RAYTRACER_INCLUDE_DIRS} "${RAYTRACER_SOURCE_DIR}/3rdparty/glfw/include" )
-set( RAYTRACER_LIBRARIES ${RAYTRACER_LIBRARIES} glfw ${GLFW_LIBRARIES} )
-
 # Find OpenCL
 find_package( OpenCL REQUIRED )
-set( RAYTRACER_DEFINITIONS "${RAYTRACER_DEFINITIONS} ${OpenCL_DEFINITIONS}" )
-set( RAYTRACER_INCLUDE_DIRS ${RAYTRACER_INCLUDE_DIRS} ${OpenCL_INCLUDE_DIRS} )
-set( RAYTRACER_LIBRARIES ${RAYTRACER_LIBRARIES} ${OpenCL_LIBRARIES} )
+set( CLTRACER_DEFINITIONS "${CLTRACER_DEFINITIONS} ${OpenCL_DEFINITIONS}" )
+set( CLTRACER_INCLUDE_DIRS ${CLTRACER_INCLUDE_DIRS} ${OpenCL_INCLUDE_DIRS} )
+set( CLTRACER_LIBRARIES ${CLTRACER_LIBRARIES} ${OpenCL_LIBRARIES} )
 
-# Raytracer sources
-set( RAYTRACER_SOURCE_FILES "${RAYTRACER_SOURCE_DIR}/source/main.cpp"
-                        "${RAYTRACER_SOURCE_DIR}/source/CmdArgs.cpp"
-                        "${RAYTRACER_SOURCE_DIR}/source/PPMImage.cpp"
-                        "${RAYTRACER_SOURCE_DIR}/source/Renderer.cpp"
-                        "${RAYTRACER_SOURCE_DIR}/source/Screen.cpp"
-                        "${RAYTRACER_SOURCE_DIR}/source/World.cpp"
-                        "${RAYTRACER_SOURCE_DIR}/source/clSampler/clUtils.c"
-                        "${RAYTRACER_SOURCE_DIR}/source/clSampler/CodeGenerator.cpp"
-                        "${RAYTRACER_SOURCE_DIR}/source/clSampler/Sampler.cpp" )
+# clTracer sources
+set( CLTRACER_SOURCE_FILES "${CLTRACER_SOURCE_DIR}/source/main.cpp"
+    "${CLTRACER_SOURCE_DIR}/source/CmdArgs.cpp"
+    "${CLTRACER_SOURCE_DIR}/source/PPMImage.cpp"
+    "${CLTRACER_SOURCE_DIR}/source/Screen.cpp"
+    "${CLTRACER_SOURCE_DIR}/source/World.cpp"
+    "${CLTRACER_SOURCE_DIR}/source/clSampler/clUtils.c"
+    "${CLTRACER_SOURCE_DIR}/source/clSampler/CodeGenerator.cpp"
+    "${CLTRACER_SOURCE_DIR}/source/clSampler/Sampler.cpp" )
 
 # Compile
-add_definitions( ${RAYTRACER_DEFINITIONS} )
-add_definitions( -DCL_SOURCE_DIR="${RAYTRACER_SOURCE_DIR}/source/clSampler/" )
-include_directories( ${RAYTRACER_INCLUDE_DIRS} )
+add_definitions( ${CLTRACER_DEFINITIONS} )
+add_definitions( -DCL_SOURCE_DIR="${CLTRACER_SOURCE_DIR}/source/clSampler/" )
+include_directories( ${CLTRACER_INCLUDE_DIRS} )
 
-add_executable( raytracer ${RAYTRACER_SOURCE_FILES} )
-target_link_libraries( raytracer ${RAYTRACER_LIBRARIES} )
+add_executable( clTracer ${CLTRACER_SOURCE_FILES} )
+target_link_libraries( clTracer ${CLTRACER_LIBRARIES} )
 

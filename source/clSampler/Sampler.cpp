@@ -30,7 +30,6 @@
 #include "../utils.hpp"
 #include "CodeGenerator.hpp"
 #include "OpenCL.h"
-#include <GLFW/glfw3.h>
 #include <fstream>
 
 #define XSTR(s) #s
@@ -62,8 +61,6 @@ struct Sampler::SamplerImpl {
 
     cl_kernel sampleKernel; /// Raytracer entry point.
 
-    unsigned texture;       /// Texture ID.
-
     cl_mem originBuffer;    /// Origin of the ray.
     cl_mem topLeftBuffer;   /// Top left pixel position.
     cl_mem upBuffer;        /// Up vector
@@ -73,31 +70,29 @@ struct Sampler::SamplerImpl {
     Time time;              /// Used for benchmarking.
 
     /// Sets up OpenCL with the given program source code.
-    SamplerImpl(const char *source, long sourceSize, int _width, int _height,
-            unsigned _texture);
+    SamplerImpl(const char *source, long sourceSize, int _width, int _height);
 
     ~SamplerImpl();
 };
 
 Sampler::SamplerImpl::SamplerImpl(const char *source, long sourceSize,
-        int _width, int _height, unsigned _texture)
-        : width(_width), height(_height), texture(_texture)
-{
+        int _width, int _height)
+        : width(_width), height(_height) {
     int err;
 
     err = clGetPlatformIDs(1, &platform, NULL);
-    stop_if(err != CL_SUCCESS, "failed to find an OpenCL platform. Error %d.", err);
+    stop_if(err < 0, "failed to find an OpenCL platform. Error %d.", err);
 
     err = clGetDeviceIDs(platform, SAMPLER_DEVICE_TYPE, 1, &device, NULL);
-    stop_if(err != CL_SUCCESS, "failed to find a device. Error %d.", err);
+    stop_if(err < 0, "failed to find a device. Error %d.", err);
 
     context = clCreateContext(NULL, 1, &device, NULL, NULL,
             &err);
-    stop_if(err != CL_SUCCESS, "failed to create an OpenCL context. Error %d.", err);
+    stop_if(err < 0, "failed to create an OpenCL context. Error %d.", err);
 
     queue = clCreateCommandQueue(context, device, 0,
             &err);
-    stop_if(err != CL_SUCCESS, "failed to create an OpenCL command queue. Error %d", err);
+    stop_if(err < 0, "failed to create an OpenCL command queue. Error %d", err);
 
     program = cluBuildProgram(context, device, source, sourceSize,
             "-Werror -cl-strict-aliasing -cl-mad-enable -cl-no-signed-zeros "
@@ -106,44 +101,36 @@ Sampler::SamplerImpl::SamplerImpl(const char *source, long sourceSize,
     stop_if(err < 0, "failed to compile the OpenCL kernel.");
 
     sampleKernel = clCreateKernel(program, "sample", &err);
-    stop_if(err != CL_SUCCESS, "failed to create the sample kernel. Error %d.", err);
+    stop_if(err < 0, "failed to create the sample kernel. Error %d.", err);
 
     originBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY, 4 * sizeof(float),
             NULL, &err);
-    stop_if(err != CL_SUCCESS, "failed to create the sample kernel origin position. "
+    stop_if(err < 0, "failed to create the sample kernel origin position. "
             "Error %d.", err);
 
     topLeftBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY, 4 * sizeof(float),
             NULL, &err);
-    stop_if(err != CL_SUCCESS, "failed to create the sample kernel top left position. "
+    stop_if(err < 0, "failed to create the sample kernel top left position. "
             "Error %d.", err);
 
     upBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY, 4 * sizeof(float),
             NULL, &err);
-    stop_if(err != CL_SUCCESS, "failed to create the sample kernel up vector. "
+    stop_if(err < 0, "failed to create the sample kernel up vector. "
             "Error %d.", err);
 
     rightBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY, 4 * sizeof(float),
             NULL, &err);
-    stop_if(err != CL_SUCCESS, "failed to create the sample kernel right vector. "
+    stop_if(err < 0, "failed to create the sample kernel right vector. "
             "Error %d.", err);
 
-    if(texture) {
-        outputImage = clCreateFromGLTexture2D(context, CL_MEM_WRITE_ONLY,
-                GL_TEXTURE_2D, 0, texture, 0);
-        stop_if(err != CL_SUCCESS, "failed to create output image from GL texture.");
-    }
-    else {
-        cl_image_format rgbaFormat;
-        rgbaFormat.image_channel_order = CL_RGBA;
-        rgbaFormat.image_channel_data_type = CL_UNORM_INT8;
+    cl_image_format rgbaFormat;
+    rgbaFormat.image_channel_order = CL_RGBA;
+    rgbaFormat.image_channel_data_type = CL_UNORM_INT8;
 
-        outputImage = clCreateImage2D(context, CL_MEM_WRITE_ONLY,
-                &rgbaFormat, width, height, 0, NULL, &err);
-        stop_if(err != CL_SUCCESS,
-                "failed to create the sample kernel output image. Error %d.", err);
-        stop_if(!outputImage, "SHIT");
-    }
+    outputImage = clCreateImage2D(context, CL_MEM_WRITE_ONLY,
+            &rgbaFormat, width, height, 0, NULL, &err);
+    stop_if(err < 0,
+            "failed to create the sample kernel output image. Error %d.", err);
 
     err = clSetKernelArg(sampleKernel, 0, sizeof(originBuffer), &originBuffer);
     stop_if(err < 0, "failed to set first kernel argument. Error %d.", err);
@@ -171,8 +158,7 @@ Sampler::SamplerImpl::~SamplerImpl() {
     clReleaseDevice(device);
 }
 
-Sampler::Sampler(const World &world, const Screen &screen, const CmdArgs &args,
-        unsigned texture) {
+Sampler::Sampler(const World &world, const Screen &screen, const CmdArgs &args) {
     int err;
     CodeGenerator generator;
 
@@ -206,7 +192,7 @@ Sampler::Sampler(const World &world, const Screen &screen, const CmdArgs &args,
 
     // Set up OpenCL.
     _impl = new SamplerImpl(source.c_str(), source.size(), args.width(),
-            args.height(), texture);
+            args.height());
 }
 
 Sampler::~Sampler() {
@@ -222,7 +208,7 @@ void Sampler::updateScreen(Screen &screen) {
         float *mapped = (float *) clEnqueueMapBuffer(_impl->queue,
                 _impl->originBuffer, CL_TRUE, CL_MAP_WRITE, 0,
                 screen.LinearizedVectorSize, 0, NULL, NULL, &err);
-        stop_if(err != CL_SUCCESS, "failed to map first kernel argument.");
+        stop_if(err < 0, "failed to map first kernel argument.");
 
         memcpy(mapped, vector, screen.LinearizedVectorSize);
 
@@ -236,7 +222,7 @@ void Sampler::updateScreen(Screen &screen) {
         float *mapped = (float *) clEnqueueMapBuffer(_impl->queue,
                 _impl->topLeftBuffer, CL_TRUE, CL_MAP_WRITE, 0,
                 screen.LinearizedVectorSize, 0, NULL, NULL, &err);
-        stop_if(err != CL_SUCCESS, "failed to map second kernel argument.");
+        stop_if(err < 0, "failed to map second kernel argument.");
 
         memcpy(mapped, vector, screen.LinearizedVectorSize);
 
@@ -250,7 +236,7 @@ void Sampler::updateScreen(Screen &screen) {
         float *mapped = (float *) clEnqueueMapBuffer(_impl->queue,
                 _impl->upBuffer, CL_TRUE, CL_MAP_WRITE, 0,
                 screen.LinearizedVectorSize, 0, NULL, NULL, &err);
-        stop_if(err != CL_SUCCESS, "failed to map third kernel argument.");
+        stop_if(err < 0, "failed to map third kernel argument.");
 
         memcpy(mapped, vector, screen.LinearizedVectorSize);
 
@@ -264,7 +250,7 @@ void Sampler::updateScreen(Screen &screen) {
         float *mapped = (float *) clEnqueueMapBuffer(_impl->queue,
                 _impl->rightBuffer, CL_TRUE, CL_MAP_WRITE, 0,
                 screen.LinearizedVectorSize, 0, NULL, NULL, &err);
-        stop_if(err != CL_SUCCESS, "failed to map fourth kernel argument.");
+        stop_if(err < 0, "failed to map fourth kernel argument.");
 
         memcpy(mapped, vector, screen.LinearizedVectorSize);
 
@@ -278,44 +264,27 @@ void Sampler::sample() {
     size_t work_size[2] = {(size_t) _impl->width, (size_t) _impl->height};
     size_t global_offset[2] = {0, 0};
 
-    // Acquire the output image.
-    if(_impl->texture) {
-        err = clEnqueueAcquireGLObjects(_impl->queue, 1, &_impl->outputImage, 0,
-                NULL, NULL);
-        stop_if(err != CL_SUCCESS, "failed to acquire the texture.");
-    }
-
     // Set the output image argument.
     err = clSetKernelArg(_impl->sampleKernel, 4, sizeof(_impl->outputImage),
             &_impl->outputImage);
-    stop_if(err != CL_SUCCESS, "failed to set fourth kernel argument. Error %d.",
+    stop_if(err < 0, "failed to set fourth kernel argument. Error %d.",
             err);
 
     // Start benchmarking the execution.
-    if(!_impl->texture)
-        _impl->time = getTime();
+    _impl->time = getTime();
 
     err = clEnqueueNDRangeKernel(_impl->queue, _impl->sampleKernel, 2,
             global_offset, work_size, NULL, 0, NULL, NULL);
-    stop_if(err != CL_SUCCESS, "failed to enqueue kernel execution. Error %d.", err);
-
-    // Release the output image.
-    if(_impl->texture) {
-        err = clEnqueueReleaseGLObjects(_impl->queue, 1, &_impl->outputImage, 0,
-                NULL, NULL);
-        stop_if(err != CL_SUCCESS, "failed to release the texture.");
-    }
+    stop_if(err < 0, "failed to enqueue kernel execution. Error %d.", err);
 
     // Wait for everything to end.
     clFinish(_impl->queue);
-    stop_if(err != CL_SUCCESS, "failed to wait for queue to finish. Error %d.", err);
+    stop_if(err < 0, "failed to wait for queue to finish. Error %d.", err);
 
     // Print time.
-    if(!_impl->texture) {
-        _impl->time = getTime() - _impl->time;
-        std::cout << "Kernel execution time: " << _impl->time << "ms\n"
-            << "Generating output..." << std::endl;
-    }
+    _impl->time = getTime() - _impl->time;
+    std::cout << "Kernel execution time: " << _impl->time << "ms\n"
+        << "Generating output..." << std::endl;
 }
 
 std::shared_ptr<PPMImage> Sampler::getImage() {
@@ -329,7 +298,7 @@ std::shared_ptr<PPMImage> Sampler::getImage() {
             _impl->outputImage,
             CL_TRUE, CL_MAP_READ, origin, region, &rowPitch, NULL, 0, NULL,
             NULL, &err);
-    stop_if(err != CL_SUCCESS, "failed to map output kernel image. Error %d.", err);
+    stop_if(err < 0, "failed to map output kernel image. Error %d.", err);
 
     auto image = std::make_shared<PPMImage>(output, _impl->width, _impl->height);
 

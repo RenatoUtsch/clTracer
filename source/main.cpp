@@ -1,9 +1,4 @@
 /*
- * Author: Renato Utsch Gonçalves
- * Computer Science, UFMG
- * Advanced Computer Graphics
- * Practical exercise 1 - Distributed Ray Tracer
- *
  * Copyright (c) 2015 Renato Utsch <renatoutsch@gmail.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -27,32 +22,24 @@
 
 #include "CmdArgs.hpp"
 #include "PPMImage.hpp"
-#include "Renderer.hpp"
 #include "Screen.hpp"
 #include "Sampler.hpp"
 #include "World.hpp"
-
-Renderer *gRenderer;
+#include <iostream>
 
 int main(int argc, char **argv) {
+    std::ios_base::sync_with_stdio(false);
+
     CmdArgs args {argc, argv};
     Screen screen {args};
     World world {args};
 
-    if(args.realtime()) {
-        Renderer renderer {world, screen, args};
-        gRenderer = &renderer;
+    Sampler sampler {world, screen, args};
+    sampler.updateScreen(screen);
+    sampler.sample();
+    auto image = sampler.getImage();
 
-        renderer.run();
-    }
-    else {
-        Sampler sampler {world, screen, args};
-        sampler.updateScreen(screen);
-        sampler.sample();
-        auto image = sampler.getImage();
-
-        image->writeTo(args.outputFilename());
-    }
+    image->writeTo(args.outputFilename());
 
     return 0;
 }

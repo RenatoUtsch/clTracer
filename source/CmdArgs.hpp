@@ -1,9 +1,4 @@
 /*
- * Author: Renato Utsch Gonçalves
- * Computer Science, UFMG
- * Advanced Computer Graphics
- * Practical exercise 1 - Distributed Ray Tracer
- *
  * Copyright (c) 2015 Renato Utsch <renatoutsch@gmail.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -36,7 +31,7 @@
 class CmdArgs {
     std::string _input, _output, _programName;
     int _width, _height, _aa, _ss;
-    bool _extSpec, _realtime;
+    bool _extSpec;
 
     /// Returns the given option or NULL if it wasn't found.
     char *getOption(char **begin, char **end, const std::string &option);
@@ -98,11 +93,6 @@ public:
     /// Returns if is using the extended object specification.
     inline bool extSpec() const {
         return _extSpec;
-    }
-
-    /// Returns if run is to be realtime.
-    inline bool realtime() const {
-        return _realtime;
     }
 };
 

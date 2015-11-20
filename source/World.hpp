@@ -1,9 +1,4 @@
 /*
- * Author: Renato Utsch Gonçalves
- * Computer Science, UFMG
- * Advanced Computer Graphics
- * Practical exercise 1 - Distributed Ray Tracer
- *
  * Copyright (c) 2015 Renato Utsch <renatoutsch@gmail.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy

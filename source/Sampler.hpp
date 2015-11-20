@@ -1,9 +1,4 @@
 /*
- * Author: Renato Utsch Gonçalves
- * Computer Science, UFMG
- * Advanced Computer Graphics
- * Practical exercise 1 - Distributed Ray Tracer
- *
  * Copyright (c) 2015 Renato Utsch <renatoutsch@gmail.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -54,11 +49,8 @@ public:
      * constant through all the execution of the sampler.
      * @param screen Screen properties.
      * @param args Program command line arguments.
-     * @param texture If is to render to texture, this is the texture ID where
-     * the raytracer will render to.
      */
-    Sampler(const World &world, const Screen &screen, const CmdArgs &args,
-            unsigned texture = 0);
+    Sampler(const World &world, const Screen &screen, const CmdArgs &args);
 
     ~Sampler();
 

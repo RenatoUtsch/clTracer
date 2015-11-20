@@ -1,12 +1,10 @@
-Advanced Computer Graphics TP 1 Documentation
-Distributed Raytracer
-2015/02
-Student: Renato Utsch Gonçalves
+OpenCL Path Tracer
+Renato Utsch Gonçalves
 
 == Compiling
 =============
-To compile the RayTracer, CMake, OpenGL, OpenCL and a compliant C++11 compiler
-are needed. If on Windows, Visual C++ 2015 is recommended.
+To compile clTracer, CMake, OpenCL and a compliant C++14 compiler are needed.
+If on Windows, Visual C++ 2015 is recommended.
 
 The compilation was tested on OS X (using OpenCL on the CPU) and on Windows
 (using OpenCL on a NVIDIA GPU).
