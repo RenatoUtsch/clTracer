@@ -58,7 +58,8 @@ set( CLTRACER_SOURCE_FILES "${CLTRACER_SOURCE_DIR}/source/main.cpp"
 
 # Compile
 add_definitions( ${CLTRACER_DEFINITIONS} )
-add_definitions( -DCL_SOURCE_DIR="${CLTRACER_SOURCE_DIR}/source/clSampler/" )
+add_definitions( -DCL_SOURCE_DIR="${CLTRACER_SOURCE_DIR}/source/clSampler/cl/" )
+add_definitions( -DDEBUG )
 include_directories( ${CLTRACER_INCLUDE_DIRS} )
 
 add_executable( clTracer ${CLTRACER_SOURCE_FILES} )

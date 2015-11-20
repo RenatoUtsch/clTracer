@@ -111,11 +111,13 @@ std::string Sampler::SamplerImpl::generateSource(const World &world,
 
     delete [] samplerSource;
 
+#ifdef DEBUG
     // Save the source to a file.
     std::ofstream out("source.cl");
     stop_if(!out.is_open(), "Failed to open output kernel file.");
     out << source;
     out.close();
+#endif
 
     return source;
 }

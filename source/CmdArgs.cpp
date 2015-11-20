@@ -53,7 +53,6 @@ void CmdArgs::printHelpAndQuit(int argc, char **argv) {
         << "output\t\tOutput image filename\n"
         << "\nOptions:\n"
         << "--help\t\tShow help information\n"
-        << "--realtime\t\tRun raytracer in realtime. Doesn't generate images.\n"
         << "-w <arg>\t\tSet the width of the image to <arg>\n"
         << "-h <arg>\t\tSet the height of the image to <arg>\n"
         << "-aa <arg>\t\tSet the antialiasing level of the image to <arg>\n"
