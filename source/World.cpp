@@ -58,10 +58,15 @@ void World::readLightDescription(std::ifstream &in, bool extSpec) {
         in >> light.pos.x >> light.pos.y >> light.pos.z;
         in >> light.color.r >> light.color.g >> light.color.b;
         if(extSpec)
-            in >> light.size;
+            in >> light.radius;
+        else
+            light.radius = 0.1f;
         in >> light.constantAtt >> light.linearAtt >> light.quadraticAtt;
 
-        lights.push_back(light);
+        if(i == 0)
+            ambientLight = light;
+        else
+            lights.push_back(light);
     }
 }
 

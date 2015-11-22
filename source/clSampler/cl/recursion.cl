@@ -33,7 +33,8 @@ typedef struct State {
     float4 ambientDiffuseColor, specularColor;
     float4 reflectionColor, transmissionColor;
     float4 outColor;
-    int id, exclID, materialID, textureID, depth, stage;
+    uint2 *seed;
+    int id, exclID, materialID, textureID, stage;
     IntersectionType exclType, iType;
     TextureType textureType;
     bool inside;
@@ -57,8 +58,10 @@ State *stackTop(Stack *stack);
 void stackPush(Stack *stack);
 void stackPop(Stack *stack);
 bool stackEmpty(Stack *stack);
-void initState(State *t, float4 origin, float4 dir,
-        IntersectionType exclType, int exclID, int depth, int stage);
+void initStage0(State *t, float4 origin, float4 dir, IntersectionType exclType,
+        uint2 *seed);
+void initStage1(State *t, float4 *dir, float4 *intersection,
+        IntersectionType iType, int id, float4 *normal, bool inside, uint2 *seed);
 void retStackInit(RetStack *retStack);
 float4 *retStackTop(RetStack *retStack);
 void retStackPush(RetStack *retStack);
@@ -84,14 +87,26 @@ bool stackEmpty(Stack *stack) {
     return stack->top == 0;
 }
 
-void initState(State *t, float4 origin, float4 dir,
-        IntersectionType exclType, int exclID, int depth, int stage) {
+void initStage0(State *t, float4 origin, float4 dir,
+        IntersectionType exclType, uint2 *seed) {
     t->origin = origin;
     t->dir = dir;
     t->exclType = exclType;
-    t->exclID = exclID;
-    t->depth = depth;
-    t->stage = stage;
+    t->seed = seed;
+    t->stage = 0;
+}
+
+void initStage1(State *t, float4 *dir, float4 *intersection,
+        IntersectionType iType, int id, float4 *normal, bool inside,
+        uint2 *seed) {
+    t->dir = *dir;
+    t->intersection = *intersection;
+    t->iType = iType;
+    t->id = id;
+    t->normal = *normal;
+    t->inside = inside;
+    t->seed = seed;
+    t->stage = 1;
 }
 
 void retStackInit(RetStack *retStack) {

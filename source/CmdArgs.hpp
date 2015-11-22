@@ -30,7 +30,7 @@
  */
 class CmdArgs {
     std::string _input, _output, _programName;
-    int _width, _height, _aa, _ss;
+    int _width, _height, _numPixelSamples, _numLightSamples;
     bool _extSpec;
 
     /// Returns the given option or NULL if it wasn't found.
@@ -80,14 +80,14 @@ public:
         return _height;
     }
 
-    /// Returns the AntiAliasing level.
-    inline int aaLevel() const {
-        return _aa;
+    /// Returns the number of samples per pixel.
+    inline int numPixelSamples() const {
+        return _numPixelSamples;
     }
 
-    /// Returns the SoftShadows level.
-    inline int ssLevel() const {
-        return _ss;
+    /// Returns the number of samples per light for splitting.
+    inline int numLightSamples() const {
+        return _numLightSamples;
     }
 
     /// Returns if is using the extended object specification.

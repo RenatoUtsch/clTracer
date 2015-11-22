@@ -21,37 +21,38 @@
  */
 
 #include "radiance.cl"
+#include "random.cl"
 
 /**
  * Samples a ray from origin through direction.
  */
-__kernel void sample(__constant float4 *cOrigin, __constant float4 *topLeft,
-        __constant float4 *up, __constant float4 *right,
+__kernel void sample(__constant float4 *camera, __constant float4 *topLeft,
+        __constant float4 *up, __constant float4 *right, uint2 seed,
         __write_only image2d_t out)
 {
     int2 coord = (int2) (get_global_id(0), get_global_id(1));
-    float4 origin = *cOrigin;
+    float4 origin = *camera;
     float4 color = (float4) (0.0f);
 
+    // Init the PRNG seed.
+    seed.x += get_global_size(0) * coord.y + coord.x;
+    seed.y += get_global_size(0) * coord.y + coord.x;
+
     // First get the pixel position.
-    float4 pixelPos = *topLeft + (*right * (coord.x * pixelWidth))
-        - (*up * (coord.y * pixelHeight));
-    float partWidth = pixelWidth / aaLevel;
-    float partHeight = pixelHeight / aaLevel;
+    float4 pixelPos = *topLeft + (*right * (coord.x * PixelWidth))
+        - (*up * (coord.y * PixelHeight));
 
-    // Anti aliasing.
-    for(int i = 0; i < aaLevel; ++i) {
-        for(int j = 0; j < aaLevel; ++j) {
-            // Get the position at the inside of the pixel.
-            float4 point = pixelPos + *up * (i * partHeight)
-                + *right * (j * partWidth);
+    for(int i = 0; i < NumPixelSamples; ++i) {
+        // Get the position at the inside of the pixel.
+        float4 point = pixelPos + *up * (randf(&seed) * PixelHeight)
+            + *right * (randf(&seed) * PixelWidth);
 
-            // Now make it a direction vector.
-            float4 dir = normalize(point - origin);
-            color += radiance(&origin, &dir);
-        }
+        // Now make it a direction vector.
+        float4 dir = normalize(point - origin);
+
+        color += radiance(&origin, &dir, &seed);
     }
-    color /= aaLevel * aaLevel;
+    color /= NumPixelSamples;
 
     write_imagef(out, coord, color);
 }

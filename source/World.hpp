@@ -38,7 +38,7 @@
 struct Light {
     Point pos;              /// Position of the light.
     Color color;            /// Color of the light.
-    float size;             /// Size of the light.
+    float radius;           /// Radius of the light.
     float constantAtt;      /// Constant attenuation.
     float linearAtt;        /// Linear attenuation.
     float quadraticAtt;     /// Quadratic attenuation.
@@ -149,7 +149,8 @@ public:
     /// Inits the world with the info from the input args.
     World(const CmdArgs &args);
 
-    std::vector<Light> lights;                      /// Light data.
+    Light ambientLight;                             /// Ambient light.
+    std::vector<Light> lights;                      /// Other lights..
     std::vector<SolidTexture> solidTextures;        /// Solid texture data.
     std::vector<CheckerTexture> checkerTextures;    /// Checker texture data.
     std::vector<MapTexture> mapTextures;            /// Map texture data.

@@ -22,12 +22,12 @@
 
 #include "Screen.hpp"
 #include "error.hpp"
+#include "math/math.hpp"
 #include <fstream>
 #include <limits>
 
 Screen::Screen(const CmdArgs &args)
-        : _widthInPixels(args.width()), _heightInPixels(args.height()),
-          _aaLevel(args.aaLevel()) {
+        : _width(args.width()), _height(args.height()) {
 
     // Read the input file.
     std::string input = args.inputFilename();
@@ -37,44 +37,50 @@ Screen::Screen(const CmdArgs &args)
     if(args.extSpec())
         in.ignore(std::numeric_limits<std::streamsize>::max(), in.widen('\n'));
 
-    in >> _cameraPos.x >> _cameraPos.y >> _cameraPos.z;
-    in >> _screenCenter.x >> _screenCenter.y >> _screenCenter.z;
-    in >> _up.x >> _up.y >> _up.z;
-    in >> _fovy;
+    Point camera, center;
+    Vector up, right;
+    float fovy;
+    in >> camera.x >> camera.y >> camera.z;
+    in >> center.x >> center.y >> center.z;
+    in >> up.x >> up.y >> up.z;
+    in >> fovy;
+
+    // Camera direction to the center of the screen..
+    Vector dir = (center - camera).normalize();
 
     // Make up orthogonal to the camera direction.
-    _up -= Vector::proj(cameraDir(), _up);
-    _up.normalize();
+    up -= Vector::proj(dir, up);
+    up.normalize();
 
     // Calculate the right direction.
-    _right = Vector::cross(cameraDir(), _up);
+    right = Vector::cross(dir, up);
 
     // Calculate the width and height of the screen.
-    float d = Point::distance(_screenCenter, _cameraPos);
-    _height = 2 * tan(toRads(_fovy / 2.0f)) * d;
-    _width = (_height * _widthInPixels) / _heightInPixels;
+    float d = Point::distance(center, camera);
+    _heightSize = 2 * tan(toRads(fovy / 2.0f)) * d;
+    _widthSize = (_heightSize * _width) / _height;
 
     // Save the top left pixel.
-    Point topLeft = topLeftPixel();
-    _linearizedTopLeftPixel[0] = topLeft.x;
-    _linearizedTopLeftPixel[1] = topLeft.y;
-    _linearizedTopLeftPixel[2] = topLeft.z;
-    _linearizedTopLeftPixel[3] = 1.0f;
+    Point topLeft = center - (right * (_widthSize / 2)) + (up * (_heightSize / 2));
+    _topLeftPixelPos[0] = topLeft.x;
+    _topLeftPixelPos[1] = topLeft.y;
+    _topLeftPixelPos[2] = topLeft.z;
+    _topLeftPixelPos[3] = 1.0f;
 
-    _linearizedCameraPos[0] = _cameraPos.x;
-    _linearizedCameraPos[1] = _cameraPos.y;
-    _linearizedCameraPos[2] = _cameraPos.z;
-    _linearizedCameraPos[3] = 1.0f;
+    _cameraPos[0] = camera.x;
+    _cameraPos[1] = camera.y;
+    _cameraPos[2] = camera.z;
+    _cameraPos[3] = 1.0f;
 
-    _linearizedUpVector[0] = _up.x;
-    _linearizedUpVector[1] = _up.y;
-    _linearizedUpVector[2] = _up.z;
-    _linearizedUpVector[3] = 0.0f;
+    _upVector[0] = up.x;
+    _upVector[1] = up.y;
+    _upVector[2] = up.z;
+    _upVector[3] = 0.0f;
 
-    _linearizedRightVector[0] = _right.x;
-    _linearizedRightVector[1] = _right.y;
-    _linearizedRightVector[2] = _right.z;
-    _linearizedRightVector[3] = 0.0f;
+    _rightVector[0] = right.x;
+    _rightVector[1] = right.y;
+    _rightVector[2] = right.z;
+    _rightVector[3] = 0.0f;
 
     // If the distance from the camera to the center of the screen is d and
     // half the fovy is f, the maximum height of the screen is:

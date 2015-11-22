@@ -46,17 +46,17 @@ void CmdArgs::printErrorAndQuit(int argc, char **argv) {
 }
 
 void CmdArgs::printHelpAndQuit(int argc, char **argv) {
-    std::cerr << "Usage: " << argv[0] << " input output [options]\n"
+    std::cerr << "Usage: " << argv[0] << " input output numSamples [options]\n"
         << "Raytrace a scene specified from input file to output.\n"
         << "\nMandatory positional arguments:\n"
         << "input\t\tInput filename with the scene description\n"
         << "output\t\tOutput image filename\n"
+        << "numSamples\t\tNumber of samples per pixel and light\n"
         << "\nOptions:\n"
         << "--help\t\tShow help information\n"
         << "-w <arg>\t\tSet the width of the image to <arg>\n"
         << "-h <arg>\t\tSet the height of the image to <arg>\n"
-        << "-aa <arg>\t\tSet the antialiasing level of the image to <arg>\n"
-        << "-ss <arg>\t\tSet the soft shadows level of the image to <arg>";
+        << "-ls <arg>\t\tChange the number of samples per light to <arg>";
 
     std::cerr << std::endl;
     exit(1);
@@ -78,18 +78,19 @@ bool CmdArgs::getExtSpec(const std::string &input) {
 CmdArgs::CmdArgs(int argc, char **argv) {
     if(optionExists(argv, argv + argc, "--help"))
         printHelpAndQuit(argc, argv);
-    if(argc < 3)
+    if(argc < 4)
         printErrorAndQuit(argc, argv);
 
     // Parse positional arguments.
     _input = argv[1];
     _output = argv[2];
+    _numPixelSamples = (int) strtol(argv[3], NULL, 10);
+    _numLightSamples = _numPixelSamples;
+    stop_if(_numPixelSamples <= 0, "Number of samples must be > 0.");
 
     // Init options with default values.
     _width = 800;
     _height = 600;
-    _aa = 1;
-    _ss = 1;
     _extSpec = getExtSpec(_input);
 
     // Parse options.
@@ -105,27 +106,13 @@ CmdArgs::CmdArgs(int argc, char **argv) {
 
         _height = (int) strtol(opt, NULL, 10);
     }
-    if(optionExists(argv, argv + argc, "-aa")) {
-        char *opt = getOption(argv, argv + argc, "-aa");
+    if(optionExists(argv, argv + argc, "-ls")) {
+        char *opt = getOption(argv, argv + argc, "-ls");
         if(!opt) printErrorAndQuit(argc, argv);
 
-        _aa = (int) strtol(opt, NULL, 10);
+        _numLightSamples = (int) strtol(opt, NULL, 10);
 
-        int result = _aa != 1 && _aa != 2 && _aa != 4 && _aa != 8 && _aa != 16;
-        stop_if(result, "Invalid aa level: must be 1, 2, 4, 8, or 16.");
-    }
-    if(optionExists(argv, argv + argc, "-ss")) {
-        char *opt = getOption(argv, argv + argc, "-ss");
-        if(!opt) printErrorAndQuit(argc, argv);
-
-        if(!_extSpec) {
-            printf("Input file must use extended specification for -ss to be used.\n");
-            exit(1);
-        }
-
-        _ss = (int) strtol(opt, NULL, 10);
-
-        int result = _ss != 1 && _ss != 2 && _ss != 4 && _ss != 8 && _ss != 16;
-        stop_if(result, "Invalid ss level: must be 1, 2, 4, 8 or 16.");
+        stop_if(_numLightSamples <= 0,
+                "Invalid number of light samples: must be > 0.");
     }
 }

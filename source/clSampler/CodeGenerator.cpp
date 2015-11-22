@@ -29,7 +29,7 @@ std::string CodeGenerator::generateStructures(const World &world) {
         "typedef struct Light {\n"
         "    float4 pos;\n"
         "    float4 color;\n"
-        "    float size;\n"
+        "    float radius;\n"
         "    float constantAtt;\n"
         "    float linearAtt;\n"
         "    float quadraticAtt;\n"
@@ -92,10 +92,10 @@ std::string CodeGenerator::generateConstants(const Screen &screen,
         const CmdArgs &args) {
     std::stringstream code;
 
-    code << "#define pixelWidth ((float) " << screen.pixelWidth() << ")\n"
-        << "#define pixelHeight ((float) " << screen.pixelHeight() << ")\n"
-        << "#define aaLevel ((int) " << args.aaLevel() << ")\n"
-        << "#define ssLevel ((int) " << args.ssLevel() << ")\n"
+    code << "#define PixelWidth ((float) " << screen.pixelWidth() << ")\n"
+        << "#define PixelHeight ((float) " << screen.pixelHeight() << ")\n"
+        << "#define NumPixelSamples (" << args.numPixelSamples() << ")\n"
+        << "#define NumLightSamples (" << args.numLightSamples() << ")\n"
         << "\n";
 
     return code.str();
@@ -104,19 +104,26 @@ std::string CodeGenerator::generateConstants(const Screen &screen,
 std::string CodeGenerator::generateLights(const World &world) {
     std::stringstream code;
 
-    stop_if(!world.lights.size(), "input needs at least one light.");
+    code << "__constant Light ambientLight = "
+        << writeLight(world.ambientLight)
+        << ";\n\n";
 
-    code << "#define numLights " << world.lights.size() << "\n\n"
+    code << "#define NumLights " << world.lights.size() << "\n\n"
         << "__constant Light lights[] = {\n";
 
-    for(size_t i = 0; i < world.lights.size(); ++i) {
-        code << "    " << writeLight(world.lights[i]);
-        if(i != world.lights.size() - 1)
-            code << ",";
-        code << "\n";
-    }
+    if(world.lights.size()) {
+        for(size_t i = 0; i < world.lights.size(); ++i) {
+            code << "    " << writeLight(world.lights[i]);
+            if(i != world.lights.size() - 1)
+                code << ",";
+            code << "\n";
+        }
 
-    code << "};\n\n";
+        code << "};\n\n";
+    }
+    else {
+        code << "__constant Light lights[1]; // Dummy.\n\n";
+    }
 
     return code.str();
 }
@@ -309,7 +316,7 @@ std::string CodeGenerator::writeLight(const Light &light) {
     code << "{ "
         << writePoint(light.pos) << ", "
         << writeColor(light.color) << ", "
-        << writeFloat(light.size) << ", "
+        << writeFloat(light.radius) << ", "
         << writeFloat(light.constantAtt) << ", "
         << writeFloat(light.linearAtt) << ", "
         << writeFloat(light.quadraticAtt)
@@ -460,7 +467,8 @@ std::string CodeGenerator::generateCode(const World &world, const Screen &screen
         << generateMapTextures(world)
         << generateMaterials(world)
         << generateSpheres(world)
-        << generatePolyhedrons(world);
+        << generatePolyhedrons(world)
+        << "#include \"sampler.cl\"\n\n"; // Insert the source here.
 
     return code.str();
 }

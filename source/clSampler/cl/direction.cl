@@ -23,6 +23,8 @@
 #ifndef DIRECTION_CL
 #define DIRECTION_CL
 
+#include "random.cl"
+
 /**
  * Returns the reflection direction.
  * @param dir Ray direction.
@@ -44,12 +46,11 @@ bool getTransmissionDirection(float refrRate, float4 dir, float4 normal,
 /**
  * Returns the light position taking into account its area.
  * @param orig The ray origin.
- * @param k The index of the light source.
- * @param i For calculating the returned position. 0 <= i < ssLevel
- * @param j For calculating the returned position. 0 <= j < ssLevel
+ * @param id The index of the light source.
+ * @param seed Random seed.
  * @return The position of the light.
  */
-float4 getLightPos(float4 *orig, int k, int i, int j);
+float4 getRandomLightPos(float4 *orig, int id, uint2 *seed);
 
 float4 getReflectionDirection(float4 dir, float4 normal)
 {
@@ -81,8 +82,8 @@ bool getTransmissionDirection(float refrRate, float4 dir, float4 normal,
     }
 }
 
-float4 getLightPos(float4 *orig, int k, int i, int j) {
-    float4 pos = lights[k].pos;
+float4 getRandomLightPos(float4 *orig, int id, uint2 *seed) {
+    float4 pos = lights[id].pos;
     float4 dir = normalize(pos - *orig);
 
     // We use dir, which is the pos plane normal and the point pos to calculate
@@ -98,16 +99,9 @@ float4 getLightPos(float4 *orig, int k, int i, int j) {
     // Now use the random point as the right direction.
     float4 right = normalize(point - pos);
     float4 up = cross(right, dir);
-    float lightSize = lights[k].size;
 
-    // Get the leftmost light point.
-    if(ssLevel > 1) {
-        float factor = lightSize / (2 * ssLevel) - lightSize / 2;
-        float part = lightSize / ssLevel;
-        pos += right * (factor + i * part) + up * (factor + j * part);
-    }
-
-    return pos;
+    // Return a random point in the light.
+    return randcircle(pos, right, up, lights[id].radius, seed);
 }
 
 #endif // !DIRECTION_CL
