@@ -20,6 +20,14 @@ float4 getTextureColor(TextureType type, int id, float4 p);
 void getObjectIDs(IntersectionType iType, int id, int *materialID,
         TextureType *textureType, int *textureID);
 
+/**
+ * Returns if a sphere emits.
+ */
+inline bool sphereEmits(int id) {
+    return spheres[id].emission.x > 0.0f || spheres[id].emission.y > 0.0f
+        || spheres[id].emission.z > 0.0f;
+}
+
 float4 getTextureColor(TextureType type, int id, float4 p) {
     switch(type) {
         case SolidTextureType:
@@ -65,7 +73,7 @@ void getObjectIDs(IntersectionType iType, int id, int *materialID,
             break;
 
         case PolyhedronIntersection:
-            if(numPolyhedrons) { // This if is because of an Intel compiler bug.
+            if(NumPolyhedrons) { // This if is because of an Intel compiler bug.
                 *materialID = polyhedrons[id].materialID;
                 *textureID = polyhedrons[id].textureID;
                 *textureType = polyhedrons[id].textureType;

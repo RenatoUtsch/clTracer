@@ -25,16 +25,14 @@
 
 #include "intersection.cl"
 
-#define STACK_SIZE (MAX_DEPTH * MAX_DEPTH * MAX_DEPTH)
+#define STACK_SIZE (200)
 
 /// Recursion state.
 typedef struct State {
-    float4 origin, dir, intersection, normal;
-    float4 radiance;
-    int id, exclID, materialID, textureID, stage;
-    IntersectionType exclType, iType;
-    TextureType textureType;
-    bool inside;
+    float4 origin, dir;
+    float4 factor;
+    int exclID, stage;
+    IntersectionType exclType;
 } State;
 
 /// Stack used for recursion.
@@ -55,9 +53,8 @@ State *stackTop(Stack *stack);
 void stackPush(Stack *stack);
 void stackPop(Stack *stack);
 bool stackEmpty(Stack *stack);
-void initStage0(State *t, float4 origin, float4 dir, IntersectionType exclType);
-void initStage1(State *t, float4 *dir, float4 *intersection,
-        IntersectionType iType, int id, float4 *normal, bool inside);
+void initState(State *t, float4 origin, float4 dir, IntersectionType exclType,
+        int exclID);
 void retStackInit(RetStack *retStack);
 float4 *retStackTop(RetStack *retStack);
 void retStackPush(RetStack *retStack);
@@ -83,23 +80,13 @@ bool stackEmpty(Stack *stack) {
     return stack->top == 0;
 }
 
-void initStage0(State *t, float4 origin, float4 dir,
-        IntersectionType exclType) {
+void initState(State *t, float4 origin, float4 dir, IntersectionType exclType,
+        int exclID) {
     t->origin = origin;
     t->dir = dir;
     t->exclType = exclType;
+    t->exclID = exclID;
     t->stage = 0;
-}
-
-void initStage1(State *t, float4 *dir, float4 *intersection,
-        IntersectionType iType, int id, float4 *normal, bool inside) {
-    t->dir = *dir;
-    t->intersection = *intersection;
-    t->iType = iType;
-    t->id = id;
-    t->normal = *normal;
-    t->inside = inside;
-    t->stage = 1;
 }
 
 void retStackInit(RetStack *retStack) {

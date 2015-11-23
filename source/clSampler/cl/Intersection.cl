@@ -31,6 +31,31 @@ typedef enum IntersectionType {
 } IntersectionType;
 
 /**
+ * Traces the ray cast by sample() and sees if it intersects anything. Returns
+ * what happened.
+ * @param origin The ray origin.
+ * @param direction The ray direction.
+ * @param exclID ID of an object to be excluded from the search. Set to -1 to
+ * search all objects.
+ * @param exclType Type of an object to be excluded from the search. Set to
+ * 0 to search all objects.
+ * @param endPos If the object is found after this distance, it will not be
+ * counted. Set to 0 to search for all objects.
+ * @param outIntersectionID Set to the ID of the intersected object. Set to
+ * 0 to ignore.
+ * @param outIntersection Set to the point of intersection. Set to 0 to ignore.
+ * @param outIntersectionNormal Set to the normal at the point of intersection.
+ * Set to 0 to ignore.
+ * @param outInside Set to true if the ray is inside (the sphere) and to false
+ * otherwise. Set to 0 to ignore.
+ * @return The type of intersection.
+ */
+IntersectionType trace(float4 origin, float4 direction,
+        IntersectionType exclType, int exclID, float4 *endPos,
+        int *outIntersectionID, float4 *outIntersection,
+        float4 *outIntersectionNormal, bool *outInside);
+
+/**
  * Tries to intersect with a sphere.
  * @param origin Origin of the ray.
  * @param dir Direction of the ray.
@@ -56,40 +81,89 @@ float sphereIntersection(float4 origin, float4 dir, float4 center,
 float polyhedronIntersection(int id, float4 origin, float4 dir, float maxT,
         float4 *normal);
 
-/**
- * Traces the ray cast by sample() and sees if it intersects anything. Returns
- * what happened.
- * @param origin The ray origin.
- * @param direction The ray direction.
- * @param exclID ID of an object to be excluded from the search. Set to -1 to
- * search all objects.
- * @param exclType Type of an object to be excluded from the search. Set to
- * 0 to search all objects.
- * @param endPos If the object is found after this distance, it will not be
- * counted. Set to 0 to search for all objects.
- * @param outIntersectionID Set to the ID of the intersected object. Set to
- * 0 to ignore.
- * @param outIntersection Set to the point of intersection. Set to 0 to ignore.
- * @param outIntersectionNormal Set to the normal at the point of intersection.
- * Set to 0 to ignore.
- * @param outInside Set to true if the ray is inside (the sphere) and to false
- * otherwise. Set to 0 to ignore.
- * @return The type of intersection.
- */
-IntersectionType traceObjects(float4 origin, float4 direction,
+IntersectionType trace(float4 origin, float4 direction,
         IntersectionType exclType, int exclID, float4 *endPos,
         int *outIntersectionID, float4 *outIntersection,
-        float4 *outIntersectionNormal, bool *outInside);
+        float4 *outIntersectionNormal, bool *outInside)
+{
+    float4 closestNormal;
+    float closestT = FLT_MAX;
+    int closestID;
+    IntersectionType closestType = NoIntersection;
+    bool closestInside = false;
+    bool inside;
 
-/**
- * Traces the ray to see if it intersects with any lights.
- * @param origin Origin of the ray.
- * @param dir Ray direction.
- * @param id Id of the intersected light.
- * @param interPos Position of intersection.
- * @return if intersected.
- */
-bool traceLight(float4 origin, float4 dir, int *id, float4 *interPos);
+    // Find the maximum t.
+    // If origin + t * dir = endPos, then t = (endPos - origin) / dir.
+    float maxT;
+    if(endPos)
+        maxT = (endPos->x - origin.x) / direction.x;
+    else
+        maxT = FLT_MAX;
+
+    // Intersect with spheres.
+    for(int i = 0; i < NumSpheres; ++i) {
+        if(exclType == SphereIntersection && i == exclID) continue;
+
+        float t = sphereIntersection(origin, direction, spheres[i].center,
+                spheres[i].radius2, maxT, &inside);
+
+        if(t > FLT_EPSILON && t < closestT) {
+            closestT = t;
+            closestType = SphereIntersection;
+            closestID = i;
+            closestInside = inside;
+        }
+    }
+    // Intersect with polyhedrons.
+    for(int i = 0; i < NumPolyhedrons; ++i) {
+        if(exclType == PolyhedronIntersection && i == exclID) continue;
+
+        float4 normal;
+        float t = polyhedronIntersection(i, origin, direction, maxT, &normal);
+
+        if(t > FLT_EPSILON && t < closestT) {
+            closestT = t;
+            closestType = PolyhedronIntersection;
+            closestID = i;
+            closestNormal = normal;
+        }
+    }
+
+    if(closestType != NoIntersection) {
+        if(outIntersectionID)
+            *outIntersectionID = closestID;
+        if(outIntersection)
+            *outIntersection = origin + closestT * direction;
+
+        if(closestType == SphereIntersection) {
+            if(outIntersectionNormal) {
+                closestNormal = normalize(*outIntersection
+                        - spheres[closestID].center);
+                if(closestInside) // Invert the normal.
+                    closestNormal *= -1.0f;
+
+                *outIntersectionNormal = closestNormal;
+            }
+            if(outInside)
+                *outInside = closestInside;
+
+            return SphereIntersection;
+        }
+
+        if(closestType == PolyhedronIntersection) {
+            if(outIntersectionNormal)
+                *outIntersectionNormal = closestNormal;
+
+            if(outInside)
+                *outInside = false;
+
+            return PolyhedronIntersection;
+        }
+    }
+
+    return NoIntersection;
+}
 
 float sphereIntersection(float4 origin, float4 dir, float4 center,
         float radius2, float maxT, bool *inside)
@@ -168,115 +242,6 @@ float polyhedronIntersection(int id, float4 origin, float4 dir, float maxT,
     }
 
     return -1.0f;
-}
-
-IntersectionType traceObjects(float4 origin, float4 direction,
-        IntersectionType exclType, int exclID, float4 *endPos,
-        int *outIntersectionID, float4 *outIntersection,
-        float4 *outIntersectionNormal, bool *outInside)
-{
-    float4 closestNormal;
-    float closestT = FLT_MAX;
-    int closestID;
-    IntersectionType closestType = NoIntersection;
-    bool closestInside = false;
-    bool inside;
-
-    // Find the maximum t.
-    // If origin + t * dir = endPos, then t = (endPos - origin) / dir.
-    float maxT;
-    if(endPos)
-        maxT = (endPos->x - origin.x) / direction.x;
-    else
-        maxT = FLT_MAX;
-
-    // Intersect with spheres.
-    for(int i = 0; i < numSpheres; ++i) {
-        if(exclType == SphereIntersection && i == exclID) continue;
-
-        float t = sphereIntersection(origin, direction, spheres[i].center,
-                spheres[i].radius2, maxT, &inside);
-
-        if(t > FLT_EPSILON && t < closestT) {
-            closestT = t;
-            closestType = SphereIntersection;
-            closestID = i;
-            closestInside = inside;
-        }
-    }
-    // Intersect with polyhedrons.
-    for(int i = 0; i < numPolyhedrons; ++i) {
-        if(exclType == PolyhedronIntersection && i == exclID) continue;
-
-        float4 normal;
-        float t = polyhedronIntersection(i, origin, direction, maxT, &normal);
-
-        if(t > FLT_EPSILON && t < closestT) {
-            closestT = t;
-            closestType = PolyhedronIntersection;
-            closestID = i;
-            closestNormal = normal;
-        }
-    }
-
-    if(closestType != NoIntersection) {
-        if(outIntersectionID)
-            *outIntersectionID = closestID;
-        if(outIntersection)
-            *outIntersection = origin + closestT * direction;
-
-        if(closestType == SphereIntersection) {
-            if(outIntersectionNormal) {
-                closestNormal = normalize(*outIntersection
-                        - spheres[closestID].center);
-                if(closestInside) // Invert the normal.
-                    closestNormal *= -1.0f;
-
-                *outIntersectionNormal = closestNormal;
-            }
-            if(outInside)
-                *outInside = closestInside;
-
-            return SphereIntersection;
-        }
-
-        if(closestType == PolyhedronIntersection) {
-            if(outIntersectionNormal)
-                *outIntersectionNormal = closestNormal;
-
-            if(outInside)
-                *outInside = false;
-
-            return PolyhedronIntersection;
-        }
-    }
-
-    return NoIntersection;
-}
-
-bool traceLight(float4 origin, float4 dir, int *id, float4 *interPos) {
-    bool inside;
-    float closestT = FLT_MAX;
-    int closestID = -1;
-    float t;
-
-    for(int i = 0; i < NumLights; ++i) {
-        t = sphereIntersection(origin, dir, lights[i].center, lights[i].radius2,
-                FLT_MAX, &inside);
-
-        if(t > FLT_EPSILON && t < closestT) {
-            closestID = i;
-            closestT = t;
-        }
-    }
-
-    if(closestID != -1) {
-        *id = closestID;
-        *interPos = origin + closestT * dir;
-        return true;
-    }
-
-    return false;
 }
 
 #endif // !INTERSECTION_CL

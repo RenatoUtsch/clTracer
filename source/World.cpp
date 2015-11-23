@@ -92,7 +92,7 @@ void World::readTextureDescription(std::ifstream &in, const std::string &inputPa
             mapTextures.push_back(map);
         }
         else {
-            stop_if(true, "invalide texture (%s).", type.c_str());
+            stop_if(true, "invalid texture (%s).", type.c_str());
         }
     }
 }

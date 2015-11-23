@@ -95,7 +95,7 @@ std::string CodeGenerator::generateConstants(const Screen &screen,
 std::string CodeGenerator::generateSolidTextures(const World &world) {
     std::stringstream code;
 
-    code << "#define numSolidTextures " << world.solidTextures.size() << "\n\n";
+    code << "#define NumSolidTextures " << world.solidTextures.size() << "\n\n";
 
     if(world.solidTextures.size()) {
         code << "__constant SolidTexture solidTextures[] = {\n";
@@ -119,7 +119,7 @@ std::string CodeGenerator::generateSolidTextures(const World &world) {
 std::string CodeGenerator::generateCheckerTextures(const World &world) {
     std::stringstream code;
 
-    code << "#define numCheckerTextures " << world.checkerTextures.size()
+    code << "#define NumCheckerTextures " << world.checkerTextures.size()
         << "\n\n";
 
     if(world.checkerTextures.size()) {
@@ -145,7 +145,7 @@ std::string CodeGenerator::generateMapTextures(const World &world) {
     std::stringstream code;
     int texIndex = 0;
 
-    code << "#define numMapTextures " << world.mapTextures.size() << "\n\n";
+    code << "#define NumMapTextures " << world.mapTextures.size() << "\n\n";
 
     if(world.mapTextures.size()) {
         code << "__constant MapTexture mapTextures[] = {\n";
@@ -195,7 +195,7 @@ std::string CodeGenerator::generateMaterials(const World &world) {
 
     stop_if(!world.materials.size(), "Input needs at least one material.");
 
-    code << "#define numMaterials " << world.materials.size() << "\n\n"
+    code << "#define NumMaterials " << world.materials.size() << "\n\n"
         << "__constant Material materials[] = {\n";
 
     for(size_t i = 0; i < world.materials.size(); ++i) {
@@ -213,7 +213,7 @@ std::string CodeGenerator::generateMaterials(const World &world) {
 std::string CodeGenerator::generateSpheres(const World &world) {
     std::stringstream code;
 
-    code << "#define numSpheres " << world.spheres.size() << "\n\n";
+    code << "#define NumSpheres " << world.spheres.size() << "\n\n";
 
     if(world.spheres.size()) {
         code << "__constant Sphere spheres[] = {\n";
@@ -238,7 +238,7 @@ std::string CodeGenerator::generatePolyhedrons(const World &world) {
     std::stringstream code;
     size_t faceIndex = 0;
 
-    code << "#define numPolyhedrons " << world.polyhedrons.size() << "\n\n";
+    code << "#define NumPolyhedrons " << world.polyhedrons.size() << "\n\n";
 
     if(world.polyhedrons.size()) {
         code << "__constant float4 polyhedronFaces[] = {\n";

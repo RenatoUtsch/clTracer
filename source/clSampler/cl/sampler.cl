@@ -42,7 +42,7 @@ __kernel void sample(__constant float4 *camera, __constant float4 *topLeft,
     float4 pixelPos = *topLeft + (*right * (coord.x * PixelWidth))
         - (*up * (coord.y * PixelHeight));
 
-    for(int i = 0; i < NumPixelSamples; ++i) {
+    for(int i = 0; i < NumSamples; ++i) {
         // Get the position at the inside of the pixel.
         float4 point = pixelPos + *up * (randf(&seed) * PixelHeight)
             + *right * (randf(&seed) * PixelWidth);
@@ -52,7 +52,7 @@ __kernel void sample(__constant float4 *camera, __constant float4 *topLeft,
 
         color += radiance(&origin, &dir, &seed);
     }
-    color /= NumPixelSamples;
+    color /= NumSamples;
 
     write_imagef(out, coord, color);
 }

@@ -1,30 +1,55 @@
 #ifndef BRDF_CL
 #define BRDF_CL
 
-/*
+#include "direction.cl"
+
+/**
+ * Given the ray direction, intersection normal, material and if it is inside
+ * the object, returns a new ray direction, the BRDF f function and the pdf.
+ * Returns if a new direction was generated or if is to stop recursion.
+ */
+bool brdf(float4 dir, float4 normal, __constant Material *mat, bool inside,
+        uint2 *seed, float4 *newDir, float4 *f, float *pdf);
+
+/// BRDF for the diffuse component.
+bool brdfDiffuse(float4 normal, __constant Material *mat, uint2 *seed,
+        float4 *newDir, float4 *f, float *pdf);
+
+/// BRDF for the specular component.
+bool brdfSpecular(float4 dir, float4 normal, __constant Material *mat,
+        uint2 *seed, float4 *newDir, float4 *f, float *pdf);
+
+/// BRDF for the reflection component.
+bool brdfReflection(float4 dir, float4 normal, __constant Material *mat,
+        float4 *newDir, float4 *f, float *pdf);
+
+/// BRDF for the transmission component.
+bool brdfTransmission(float4 dir, float4 normal, __constant Material *mat,
+        bool inside, float4 *newDir, float4 *f, float *pdf);
+
+/**
  * Returns the normal base.
  */
 void getNormalBase(float4 normal, float4 *u, float4 *v, float4 *w);
 
-/*
- * Returns a random direction with importance sampling to the diffuse BRDF
- * and outputs the f function also.
- */
-float4 brdfDiffuse(float4 normal, __constant Material *material, float *f,
-        uint2 *seed);
+bool brdf(float4 dir, float4 normal, __constant Material *mat, bool inside,
+        uint2 *seed, float4 *newDir, float4 *f, float *pdf) {
+    float u = randf(seed);
+    float c = 0.0f;
 
-/*
- * Returns a random direction with importance sampling to the specular BRDF
- * and outputs the f function also.
- */
-float4 brdfSpecular(float4 wo, float4 normal, __constant Material *material,
-        float *f, uint2 *seed);
-
-/**
- * Returns the incoming direct radiance from the direction given.
- */
-float4 directRadiance(float4 origin, float4 dir, IntersectionType exclType,
-        int exclID);
+    // Choose which brdf to use based on the coefficients. Note that all
+    // coefficients must sum to <= 1.0f for energy conservation.
+    if(u < (c += mat->diffuseCoef)) // Sample diffuse BRDF.
+        return brdfDiffuse(normal, mat, seed, newDir, f, pdf);
+    else if(u < (c += mat->specularCoef)) // Sample specular BRDF.
+        return brdfSpecular(dir, normal, mat, seed, newDir, f, pdf);
+    else if(u < (c += mat->reflectionCoef)) // Sample reflection BRDF.
+        return brdfReflection(dir, normal, mat, newDir, f, pdf);
+    else if(u < (c += mat->transmissionCoef)) // Sample transmission BRDF.
+        return brdfTransmission(dir, normal, mat, inside, newDir, f, pdf);
+    else // No contribution.
+        return false;
+}
 
 void getNormalBase(float4 normal, float4 *u, float4 *v, float4 *w) {
     *w = normal;
@@ -33,78 +58,94 @@ void getNormalBase(float4 normal, float4 *u, float4 *v, float4 *w) {
     *v = cross(*w, *u);
 }
 
-float4 brdfDiffuse(float4 normal, __constant Material *material, float *f,
-        uint2 *seed) {
-    // Get the normal base.
+/// BRDF for the diffuse component.
+bool brdfDiffuse(float4 normal, __constant Material *mat, uint2 *seed,
+        float4 *newDir, float4 *f, float *pdf) {
     float4 u, v, w;
     getNormalBase(normal, &u, &v, &w);
 
-    // Generate random direction based on pdf =  1/pi * cos(thetai)
+    // Generate random importance sampled direction based on Blinn-Phong pdf.
     float u1 = randf(seed), u2 = randf(seed);
-    float theta = acos(sqrt(u1)), phi = 2 * M_PI * u2;
+    float theta = 2 * M_PI * u1, phi = sqrt(u2);
 
     // Convert from spherical coordinates and add the base.
-    float4 dir = normalize((float4)(
-        u * sin(theta) * cos(phi) +
-        v * sin(theta) * sin(phi) +
-        w * cos(theta)
+    *newDir = normalize((float4) (
+        u * cos(theta) * phi +
+        v * sin(theta) * phi +
+        w * sqrt(1.0f - u2)
     ));
 
-    *f = material->diffuseCoef * M_1_PI;
+    float val = mat->diffuseCoef * M_1_PI;
+    *f = (float4) (val, val, val, 1.0f);
+    *pdf = dot(normal, *newDir) * M_1_PI;
 
-    return dir;
+    if(fabs(*pdf) < FLT_EPSILON)
+        return false;
+    else
+        return true;
 }
 
-float4 brdfSpecular(float4 wo, float4 normal, __constant Material *material,
-        float *f, uint2 *seed) {
-    // Get the normal base.
+/// BRDF for the specular component.
+bool brdfSpecular(float4 dir, float4 normal, __constant Material *mat,
+        uint2 *seed, float4 *newDir, float4 *f, float *pdf) {
     float4 u, v, w;
     getNormalBase(normal, &u, &v, &w);
 
-    // Generate random direction based on pdf = (n+8)/8pi * cos^n(alpha)
+    // Generate random importance sampled direction based on Blinn-Phong pdf.
     float u1 = randf(seed), u2 = randf(seed);
-    float e = 1.0f / (material->specularExp + 1.0f);
+    float e = 1.0f / (mat->specularExp + 1.0f);
     float theta = acos(pow(u1, e)), phi = 2.0f * M_PI * u2;
 
     // Convert from spherical coordinates and add the base.
-    float4 dir = normalize((float4)(
+    *newDir = normalize((float4) (
         u * sin(theta) * cos(phi) +
         v * sin(theta) * sin(phi) +
         w * cos(theta)
     ));
 
-    // Cos(alpha)
-    float cosAlpha = dot(dir, wo);
-    if(cosAlpha < 0.0f) cosAlpha = cos(M_PI/2);
+    float cosAlpha = dot(dir, *newDir);
+    if(cosAlpha < 0.0f) cosAlpha = cos(M_PI / 2.0f);
 
-    *f = material->specularCoef * (material->specularExp + 8.0f)
-        * (8.0f * M_1_PI) * pow(cosAlpha, material->specularCoef);
+    float val = mat->specularCoef * (mat->specularExp + 2.0f)
+        * (2.0f * M_1_PI) * pow(cosAlpha, mat->specularExp);
+    *f = (float4) (val, val, val, 1.0f);
 
-    return dir;
+    *pdf = (mat->specularExp + 1.0f) * (2.0f * M_1_PI)
+        * pow(cosAlpha, mat->specularExp);
+
+    if(fabs(*pdf) < FLT_EPSILON)
+        return false;
+    else
+        return true;
 }
 
-float4 directRadiance(float4 origin, float4 dir, IntersectionType exclType,
-        int exclID) {
-    // See if there is a light intersection.
-    int id;
-    float4 interPos;
-    bool hit = traceLight(origin, dir, &id, &interPos);
-    if(!hit) // No lights.
-        return (float4)(0.0f, 0.0f, 0.0f, 0.0f);
+/// BRDF for the ideal reflection component.
+bool brdfReflection(float4 dir, float4 normal, __constant Material *mat,
+        float4 *newDir, float4 *f, float *pdf) {
+    *newDir = getReflectionDirection(dir, normal);
+    float val = mat->reflectionCoef;
+    *f = (float4) (val, val, val, 1.0f);
+    *pdf = 1.0f;
 
-    // If the light isn't occluded, return the light, else 0.
-    if(traceObjects(origin, dir, exclType, exclID, &interPos,
-            0, 0, 0, 0) == NoIntersection) {
-        // Calculate the light attenuation.
-        float dist = distance(interPos, origin);
-        float att = 1.0f / (lights[id].constantAtt
-                + dist * lights[id].linearAtt
-                + pow(dist, 2) * lights[id].quadraticAtt);
+    return true;
+}
 
-        return lights[id].color * att;
+/// BRDF for the ideal transmission component.
+bool brdfTransmission(float4 dir, float4 normal, __constant Material *mat,
+        bool inside, float4 *newDir, float4 *f, float *pdf) {
+    float refrRate = mat->refractionRate;
+    if(!inside)
+        refrRate = 1.0f / refrRate;
+
+    bool result = getTransmissionDirection(refrRate, dir, normal, inside, newDir);
+    if(result) {
+        float val = mat->transmissionCoef;
+        *f = (float4) (val, val, val, 1.0f);
+        *pdf = 1.0f;
+        return true;
     }
 
-    return (float4) (0.0f, 0.0f, 0.0f, 0.0f);
+    return false;
 }
 
 #endif // !BRDF_CL
