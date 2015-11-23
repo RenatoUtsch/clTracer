@@ -9,23 +9,23 @@
  * Returns if a new direction was generated or if is to stop recursion.
  */
 bool brdf(float4 dir, float4 normal, __constant Material *mat, bool inside,
-        uint2 *seed, float4 *newDir, float4 *f, float *pdf);
+        uint2 *seed, float4 *newDir, float *f, float *pdf);
 
 /// BRDF for the diffuse component.
 bool brdfDiffuse(float4 normal, __constant Material *mat, uint2 *seed,
-        float4 *newDir, float4 *f, float *pdf);
+        float4 *newDir, float *f, float *pdf);
 
 /// BRDF for the specular component.
 bool brdfSpecular(float4 dir, float4 normal, __constant Material *mat,
-        uint2 *seed, float4 *newDir, float4 *f, float *pdf);
+        uint2 *seed, float4 *newDir, float *f, float *pdf);
 
 /// BRDF for the reflection component.
 bool brdfReflection(float4 dir, float4 normal, __constant Material *mat,
-        float4 *newDir, float4 *f, float *pdf);
+        float4 *newDir, float *f, float *pdf);
 
 /// BRDF for the transmission component.
 bool brdfTransmission(float4 dir, float4 normal, __constant Material *mat,
-        bool inside, float4 *newDir, float4 *f, float *pdf);
+        bool inside, float4 *newDir, float *f, float *pdf);
 
 /**
  * Returns the normal base.
@@ -33,7 +33,7 @@ bool brdfTransmission(float4 dir, float4 normal, __constant Material *mat,
 void getNormalBase(float4 normal, float4 *u, float4 *v, float4 *w);
 
 bool brdf(float4 dir, float4 normal, __constant Material *mat, bool inside,
-        uint2 *seed, float4 *newDir, float4 *f, float *pdf) {
+        uint2 *seed, float4 *newDir, float *f, float *pdf) {
     float u = randf(seed);
     float c = 0.0f;
 
@@ -60,7 +60,7 @@ void getNormalBase(float4 normal, float4 *u, float4 *v, float4 *w) {
 
 /// BRDF for the diffuse component.
 bool brdfDiffuse(float4 normal, __constant Material *mat, uint2 *seed,
-        float4 *newDir, float4 *f, float *pdf) {
+        float4 *newDir, float *f, float *pdf) {
     float4 u, v, w;
     getNormalBase(normal, &u, &v, &w);
 
@@ -75,8 +75,7 @@ bool brdfDiffuse(float4 normal, __constant Material *mat, uint2 *seed,
         w * sqrt(1.0f - u2)
     ));
 
-    float val = mat->diffuseCoef * M_1_PI;
-    *f = (float4) (val, val, val, 1.0f);
+    *f = mat->diffuseCoef * M_1_PI;
     *pdf = dot(normal, *newDir) * M_1_PI;
 
     if(fabs(*pdf) < FLT_EPSILON)
@@ -87,7 +86,7 @@ bool brdfDiffuse(float4 normal, __constant Material *mat, uint2 *seed,
 
 /// BRDF for the specular component.
 bool brdfSpecular(float4 dir, float4 normal, __constant Material *mat,
-        uint2 *seed, float4 *newDir, float4 *f, float *pdf) {
+        uint2 *seed, float4 *newDir, float *f, float *pdf) {
     float4 u, v, w;
     getNormalBase(normal, &u, &v, &w);
 
@@ -106,9 +105,8 @@ bool brdfSpecular(float4 dir, float4 normal, __constant Material *mat,
     float cosAlpha = dot(dir, *newDir);
     if(cosAlpha < 0.0f) cosAlpha = cos(M_PI / 2.0f);
 
-    float val = mat->specularCoef * (mat->specularExp + 2.0f)
+    *f = mat->specularCoef * (mat->specularExp + 2.0f)
         * (2.0f * M_1_PI) * pow(cosAlpha, mat->specularExp);
-    *f = (float4) (val, val, val, 1.0f);
 
     *pdf = (mat->specularExp + 1.0f) * (2.0f * M_1_PI)
         * pow(cosAlpha, mat->specularExp);
@@ -121,10 +119,9 @@ bool brdfSpecular(float4 dir, float4 normal, __constant Material *mat,
 
 /// BRDF for the ideal reflection component.
 bool brdfReflection(float4 dir, float4 normal, __constant Material *mat,
-        float4 *newDir, float4 *f, float *pdf) {
+        float4 *newDir, float *f, float *pdf) {
     *newDir = getReflectionDirection(dir, normal);
-    float val = mat->reflectionCoef;
-    *f = (float4) (val, val, val, 1.0f);
+    *f = mat->reflectionCoef;
     *pdf = 1.0f;
 
     return true;
@@ -132,15 +129,14 @@ bool brdfReflection(float4 dir, float4 normal, __constant Material *mat,
 
 /// BRDF for the ideal transmission component.
 bool brdfTransmission(float4 dir, float4 normal, __constant Material *mat,
-        bool inside, float4 *newDir, float4 *f, float *pdf) {
+        bool inside, float4 *newDir, float *f, float *pdf) {
     float refrRate = mat->refractionRate;
     if(!inside)
         refrRate = 1.0f / refrRate;
 
     bool result = getTransmissionDirection(refrRate, dir, normal, inside, newDir);
     if(result) {
-        float val = mat->transmissionCoef;
-        *f = (float4) (val, val, val, 1.0f);
+        *f = mat->transmissionCoef;
         *pdf = 1.0f;
         return true;
     }

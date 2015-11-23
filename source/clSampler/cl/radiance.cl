@@ -100,8 +100,8 @@ void radianceStage0(Stack *stack, RetStack *retStack, State *t, uint2 *seed) {
     float u = randf(seed);
     float rr = clamp(dot(-1.0f * t->dir, normal), 0.0f, 1.0f);
     if(u < rr) { // Trace ray.
-        float4 newDir, color, f;
-        float pdf;
+        float4 newDir, color;
+        float f, pdf;
         int matID, texID;
         TextureType texType;
 

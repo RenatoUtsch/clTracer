@@ -42,17 +42,26 @@ __kernel void sample(__constant float4 *camera, __constant float4 *topLeft,
     float4 pixelPos = *topLeft + (*right * (coord.x * PixelWidth))
         - (*up * (coord.y * PixelHeight));
 
-    for(int i = 0; i < NumSamples; ++i) {
-        // Get the position at the inside of the pixel.
-        float4 point = pixelPos + *up * (randf(&seed) * PixelHeight)
-            + *right * (randf(&seed) * PixelWidth);
+    float hPart = PixelHeight / AALevel;
+    float wPart = PixelWidth / AALevel;
+    for(int i = 0; i < AALevel; ++i) {
+        for(int j = 0; j < AALevel; ++j) {
+            for(int k = 0; k < NumSamples; ++k) {
+                // Get  the position of the subpixel.
+                float4 point = pixelPos + *up * i * hPart + *right * j * wPart;
 
-        // Now make it a direction vector.
-        float4 dir = normalize(point - origin);
+                // Get the position at the inside of the subpixel.
+                point += *up * (randf(&seed) * hPart)
+                    + *right * (randf(&seed) * wPart);
 
-        color += radiance(&origin, &dir, &seed);
+                // Now make it a direction vector.
+                float4 dir = normalize(point - origin);
+
+                color += radiance(&origin, &dir, &seed);
+            }
+        }
     }
-    color /= NumSamples;
+    color /= AALevel * AALevel * NumSamples;
 
     write_imagef(out, coord, color);
 }
