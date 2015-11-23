@@ -32,18 +32,6 @@
 #include <vector>
 #include <cstdint>
 
-/**
- * This struct represents a single light.
- */
-struct Light {
-    Point pos;              /// Position of the light.
-    Color color;            /// Color of the light.
-    float radius;           /// Radius of the light.
-    float constantAtt;      /// Constant attenuation.
-    float linearAtt;        /// Linear attenuation.
-    float quadraticAtt;     /// Quadratic attenuation.
-};
-
 /// Texture types.
 enum TextureType {
     SolidTextureType,
@@ -83,7 +71,6 @@ struct MapTexture {
  * Represents a material.
  */
 struct Material {
-    float ambientCoef;          /// Ambient coefficient.
     float diffuseCoef;          /// Diffuse coefficient.
     float specularCoef;         /// Specular coefficient.
     float specularExp;          /// Specular exponent.
@@ -96,6 +83,7 @@ struct Material {
  * Represents a sphere object.
  */
 struct Sphere {
+    Color emission;             /// Emission of the sphere.
     Point center;               /// Center of the sphere.
     float radius2;              /// Radius^2 of the sphere.
     TextureType textureType;    /// Texture type.
@@ -131,10 +119,7 @@ class World {
     std::vector<TextureInfo> _textureInfos;
 
     /// Jumps the camera description from the input (by jumping 4 lines).
-    void ignoreCameraDescription(std::ifstream &in, bool extSpec);
-
-    /// Reads the light description from the input.
-    void readLightDescription(std::ifstream &in, bool extSpec);
+    void ignoreCameraDescription(std::ifstream &in);
 
     /// Reads the texture description from the input.
     void readTextureDescription(std::ifstream &in, const std::string &inputPath);
@@ -149,8 +134,6 @@ public:
     /// Inits the world with the info from the input args.
     World(const CmdArgs &args);
 
-    Light ambientLight;                             /// Ambient light.
-    std::vector<Light> lights;                      /// Other lights..
     std::vector<SolidTexture> solidTextures;        /// Solid texture data.
     std::vector<CheckerTexture> checkerTextures;    /// Checker texture data.
     std::vector<MapTexture> mapTextures;            /// Map texture data.

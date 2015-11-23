@@ -62,18 +62,6 @@ void CmdArgs::printHelpAndQuit(int argc, char **argv) {
     exit(1);
 }
 
-bool CmdArgs::getExtSpec(const std::string &input) {
-    // Get the object file format.
-    std::ifstream in(input);
-    stop_if(!in.is_open(), "failed to open input file: %s", input.c_str());
-    int magic;
-    in >> magic;
-
-    if(magic == 424242)
-        return true;
-    else
-        return false;
-}
 
 CmdArgs::CmdArgs(int argc, char **argv) {
     if(optionExists(argv, argv + argc, "--help"))
@@ -84,14 +72,13 @@ CmdArgs::CmdArgs(int argc, char **argv) {
     // Parse positional arguments.
     _input = argv[1];
     _output = argv[2];
-    _numPixelSamples = (int) strtol(argv[3], NULL, 10);
-    _numLightSamples = _numPixelSamples;
-    stop_if(_numPixelSamples <= 0, "Number of samples must be > 0.");
+    _numSamples = (int) strtol(argv[3], NULL, 10);
+    stop_if(_numSamples <= 0, "Number of samples must be > 0.");
 
     // Init options with default values.
     _width = 800;
     _height = 600;
-    _extSpec = getExtSpec(_input);
+    _aaLevel = 1; // No AA.
 
     // Parse options.
     if(optionExists(argv, argv + argc, "-w")) {
@@ -106,13 +93,13 @@ CmdArgs::CmdArgs(int argc, char **argv) {
 
         _height = (int) strtol(opt, NULL, 10);
     }
-    if(optionExists(argv, argv + argc, "-ls")) {
-        char *opt = getOption(argv, argv + argc, "-ls");
+    if(optionExists(argv, argv + argc, "-aa")) {
+        char *opt = getOption(argv, argv + argc, "-aa");
         if(!opt) printErrorAndQuit(argc, argv);
 
-        _numLightSamples = (int) strtol(opt, NULL, 10);
+        _aaLevel = (int) strtol(opt, NULL, 10);
 
-        stop_if(_numLightSamples <= 0,
-                "Invalid number of light samples: must be > 0.");
+        stop_if(_aaLevel <= 0,
+                "Invalid anti aliasing level: must be > 0.");
     }
 }

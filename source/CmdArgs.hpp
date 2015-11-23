@@ -30,8 +30,7 @@
  */
 class CmdArgs {
     std::string _input, _output, _programName;
-    int _width, _height, _numPixelSamples, _numLightSamples;
-    bool _extSpec;
+    int _width, _height, _numSamples, _aaLevel;
 
     /// Returns the given option or NULL if it wasn't found.
     char *getOption(char **begin, char **end, const std::string &option);
@@ -44,9 +43,6 @@ class CmdArgs {
 
     /// Prints the help message and exits.
     void printHelpAndQuit(int argc, char **argv);
-
-    /// Gets the specification of the input object.
-    bool getExtSpec(const std::string &input);
 
 public:
     /**
@@ -80,19 +76,14 @@ public:
         return _height;
     }
 
-    /// Returns the number of samples per pixel.
-    inline int numPixelSamples() const {
-        return _numPixelSamples;
+    /// Returns the number of samples per pixel part.
+    inline int numSamples() const {
+        return _numSamples;
     }
 
-    /// Returns the number of samples per light for splitting.
-    inline int numLightSamples() const {
-        return _numLightSamples;
-    }
-
-    /// Returns if is using the extended object specification.
-    inline bool extSpec() const {
-        return _extSpec;
+    /// Returns the anti aliasing level.
+    inline int aaLevel() const {
+        return _aaLevel;
     }
 };
 

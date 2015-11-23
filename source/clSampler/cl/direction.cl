@@ -83,7 +83,7 @@ bool getTransmissionDirection(float refrRate, float4 dir, float4 normal,
 }
 
 float4 getRandomLightPos(float4 *orig, int id, uint2 *seed) {
-    float4 pos = lights[id].pos;
+    float4 pos = lights[id].center;
     float4 dir = normalize(pos - *orig);
 
     // We use dir, which is the pos plane normal and the point pos to calculate
@@ -101,7 +101,7 @@ float4 getRandomLightPos(float4 *orig, int id, uint2 *seed) {
     float4 up = cross(right, dir);
 
     // Return a random point in the light.
-    return randcircle(pos, right, up, lights[id].radius, seed);
+    return randcircle(pos, right, up, sqrt(lights[id].radius2), seed);
 }
 
 #endif // !DIRECTION_CL

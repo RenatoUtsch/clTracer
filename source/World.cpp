@@ -31,43 +31,18 @@ World::World(const CmdArgs &args) {
     std::ifstream in(aInput);
     stop_if(!in.is_open(), "failed to open input file.");
 
-    ignoreCameraDescription(in, args.extSpec());
-    readLightDescription(in, args.extSpec());
+    ignoreCameraDescription(in);
     readTextureDescription(in, aInput.substr(0, aInput.rfind('/') + 1));
     readMaterialDescription(in);
     readObjectDescription(in);
 }
 
-void World::ignoreCameraDescription(std::ifstream &in, bool extSpec) {
-    if(extSpec)
-        in.ignore(std::numeric_limits<std::streamsize>::max(), in.widen('\n'));
-
+void World::ignoreCameraDescription(std::ifstream &in) {
     // The camera description has 4 lines.
     in.ignore(std::numeric_limits<std::streamsize>::max(), in.widen('\n'));
     in.ignore(std::numeric_limits<std::streamsize>::max(), in.widen('\n'));
     in.ignore(std::numeric_limits<std::streamsize>::max(), in.widen('\n'));
     in.ignore(std::numeric_limits<std::streamsize>::max(), in.widen('\n'));
-}
-
-void World::readLightDescription(std::ifstream &in, bool extSpec) {
-    Light light;
-    int numLights;
-
-    in >> numLights;
-    for(int i = 0; i < numLights; ++i) {
-        in >> light.pos.x >> light.pos.y >> light.pos.z;
-        in >> light.color.r >> light.color.g >> light.color.b;
-        if(extSpec)
-            in >> light.radius;
-        else
-            light.radius = 0.1f;
-        in >> light.constantAtt >> light.linearAtt >> light.quadraticAtt;
-
-        if(i == 0)
-            ambientLight = light;
-        else
-            lights.push_back(light);
-    }
 }
 
 void World::readTextureDescription(std::ifstream &in, const std::string &inputPath) {
@@ -128,10 +103,9 @@ void World::readMaterialDescription(std::ifstream &in) {
 
     in >> numMaterials;
     for(int i = 0; i < numMaterials; ++i) {
-        in >> material.ambientCoef >> material.diffuseCoef
-            >> material.specularCoef >> material.specularExp
-            >> material.reflectionCoef >> material.transmissionCoef
-            >> material.refractionRate;
+        in >> material.diffuseCoef >> material.specularCoef
+            >> material.specularExp >> material.reflectionCoef
+            >> material.transmissionCoef >> material.refractionRate;
 
         materials.push_back(material);
     }
@@ -155,6 +129,8 @@ void World::readObjectDescription(std::ifstream &in) {
             float radius;
             in >> obj.center.x >> obj.center.y >> obj.center.z >> radius;
             obj.radius2 = pow(radius, 2);
+
+            in >> obj.emission.r >> obj.emission.g >> obj.emission.b;
 
             spheres.push_back(obj);
         }

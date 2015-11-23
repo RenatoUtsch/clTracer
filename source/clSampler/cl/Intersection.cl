@@ -32,7 +32,6 @@ typedef enum IntersectionType {
 
 /**
  * Tries to intersect with a sphere.
- * @param id ID of the sphere to try to intersect.
  * @param origin Origin of the ray.
  * @param dir Direction of the ray.
  * @param maxT Maximum parametric value. If the intersection generates a bigger
@@ -41,8 +40,8 @@ typedef enum IntersectionType {
  * false otherwise.
  * @return The parametric value used to calculate the intersection position.
  */
-float sphereIntersection(int id, float4 origin, float4 dir, float maxT,
-        bool *inside);
+float sphereIntersection(float4 origin, float4 dir, float4 center,
+        float radius2, float maxT, bool *inside);
 
 /**
  * Tries to instersect with a polyhedron.
@@ -77,20 +76,30 @@ float polyhedronIntersection(int id, float4 origin, float4 dir, float maxT,
  * otherwise. Set to 0 to ignore.
  * @return The type of intersection.
  */
-IntersectionType trace(float4 origin, float4 direction,
+IntersectionType traceObjects(float4 origin, float4 direction,
         IntersectionType exclType, int exclID, float4 *endPos,
         int *outIntersectionID, float4 *outIntersection,
         float4 *outIntersectionNormal, bool *outInside);
 
-float sphereIntersection(int id, float4 origin, float4 dir, float maxT,
-        bool *inside)
+/**
+ * Traces the ray to see if it intersects with any lights.
+ * @param origin Origin of the ray.
+ * @param dir Ray direction.
+ * @param id Id of the intersected light.
+ * @param interPos Position of intersection.
+ * @return if intersected.
+ */
+bool traceLight(float4 origin, float4 dir, int *id, float4 *interPos);
+
+float sphereIntersection(float4 origin, float4 dir, float4 center,
+        float radius2, float maxT, bool *inside)
 {
-    float4 e = spheres[id].center - origin;
+    float4 e = center - origin;
     float tca = dot(e, dir);
     float d2 = dot(e, e) - pow(tca, 2);
-    if(d2 > spheres[id].radius2) return -1.0f; // No intersection.
+    if(d2 > radius2) return -1.0f; // No intersection.
 
-    float thc = sqrt(spheres[id].radius2 - d2);
+    float thc = sqrt(radius2 - d2);
     float t1 = tca - thc;
     float t2 = tca + thc;
 
@@ -161,7 +170,7 @@ float polyhedronIntersection(int id, float4 origin, float4 dir, float maxT,
     return -1.0f;
 }
 
-IntersectionType trace(float4 origin, float4 direction,
+IntersectionType traceObjects(float4 origin, float4 direction,
         IntersectionType exclType, int exclID, float4 *endPos,
         int *outIntersectionID, float4 *outIntersection,
         float4 *outIntersectionNormal, bool *outInside)
@@ -185,7 +194,8 @@ IntersectionType trace(float4 origin, float4 direction,
     for(int i = 0; i < numSpheres; ++i) {
         if(exclType == SphereIntersection && i == exclID) continue;
 
-        float t = sphereIntersection(i, origin, direction, maxT, &inside);
+        float t = sphereIntersection(origin, direction, spheres[i].center,
+                spheres[i].radius2, maxT, &inside);
 
         if(t > FLT_EPSILON && t < closestT) {
             closestT = t;
@@ -242,6 +252,31 @@ IntersectionType trace(float4 origin, float4 direction,
     }
 
     return NoIntersection;
+}
+
+bool traceLight(float4 origin, float4 dir, int *id, float4 *interPos) {
+    bool inside;
+    float closestT = FLT_MAX;
+    int closestID = -1;
+    float t;
+
+    for(int i = 0; i < NumLights; ++i) {
+        t = sphereIntersection(origin, dir, lights[i].center, lights[i].radius2,
+                FLT_MAX, &inside);
+
+        if(t > FLT_EPSILON && t < closestT) {
+            closestID = i;
+            closestT = t;
+        }
+    }
+
+    if(closestID != -1) {
+        *id = closestID;
+        *interPos = origin + closestT * dir;
+        return true;
+    }
+
+    return false;
 }
 
 #endif // !INTERSECTION_CL

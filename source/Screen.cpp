@@ -34,9 +34,6 @@ Screen::Screen(const CmdArgs &args)
     std::ifstream in(input);
     stop_if(!in.is_open(), "failed to open input file (%s).", input.c_str());
 
-    if(args.extSpec())
-        in.ignore(std::numeric_limits<std::streamsize>::max(), in.widen('\n'));
-
     Point camera, center;
     Vector up, right;
     float fovy;

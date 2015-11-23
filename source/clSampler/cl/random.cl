@@ -52,10 +52,9 @@ float4 randcircle(float4 center, float4 right, float4 up, float radius,
         uint2 *state);
 
 /**
- * Generates a random direction in a unit sphere.
- * @param center Center of the sphere.
+ * Generates a random direction in a unit hemisphere.
  */
-float4 randsphere(float4 center, uint2 *state);
+float4 randhemisphere(uint2 *state);
 
 uint rand(uint2 *state) {
     enum { A=4294883355U };
@@ -91,8 +90,19 @@ float4 randcircle(float4 center, float4 right, float4 up, float radius,
     return point;
 }
 
-float4 randsphere(float4 center, uint2 *state) {
+float4 randhemisphere(uint2 *state) {
+    float u1 = randf(state), u2 = randf(state);
+    float s = sqrt(1.0f - pow(u1, 2));
+    float u2_2p = 2 * M_PI * u2;
 
+    float4 p = (float4) (
+        s * cos(u2_2p),
+        s * sin(u2_2p),
+        u2,
+        0.0f
+    );
+
+    return normalize(p);
 }
 
 #endif // !RANDOM_CL

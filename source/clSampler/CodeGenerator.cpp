@@ -26,16 +26,7 @@
 
 std::string CodeGenerator::generateStructures(const World &world) {
     return std::string(
-        "typedef struct Light {\n"
-        "    float4 pos;\n"
-        "    float4 color;\n"
-        "    float radius;\n"
-        "    float constantAtt;\n"
-        "    float linearAtt;\n"
-        "    float quadraticAtt;\n"
-        "} Light;\n"
-        "\n"
-        "typedef enum TextureType {\n"
+       "typedef enum TextureType {\n"
         "    SolidTextureType,\n"
         "    CheckerTextureType,\n"
         "    MapTextureType\n"
@@ -60,7 +51,6 @@ std::string CodeGenerator::generateStructures(const World &world) {
         "} MapTexture;\n"
         "\n"
         "typedef struct Material {\n"
-        "    float ambientCoef;\n"
         "    float diffuseCoef;\n"
         "    float specularCoef;\n"
         "    float specularExp;\n"
@@ -70,6 +60,7 @@ std::string CodeGenerator::generateStructures(const World &world) {
         "} Material;\n"
         "\n"
         "typedef struct Sphere {\n"
+        "    float4 emission;\n"
         "    float4 center;\n"
         "    float radius2;\n"
         "    TextureType textureType;\n"
@@ -94,36 +85,9 @@ std::string CodeGenerator::generateConstants(const Screen &screen,
 
     code << "#define PixelWidth ((float) " << screen.pixelWidth() << ")\n"
         << "#define PixelHeight ((float) " << screen.pixelHeight() << ")\n"
-        << "#define NumPixelSamples (" << args.numPixelSamples() << ")\n"
-        << "#define NumLightSamples (" << args.numLightSamples() << ")\n"
+        << "#define NumSamples (" << args.numSamples() << ")\n"
+        << "#define AALevel (" << args.aaLevel() << ")\n"
         << "\n";
-
-    return code.str();
-}
-
-std::string CodeGenerator::generateLights(const World &world) {
-    std::stringstream code;
-
-    code << "__constant Light ambientLight = "
-        << writeLight(world.ambientLight)
-        << ";\n\n";
-
-    code << "#define NumLights " << world.lights.size() << "\n\n"
-        << "__constant Light lights[] = {\n";
-
-    if(world.lights.size()) {
-        for(size_t i = 0; i < world.lights.size(); ++i) {
-            code << "    " << writeLight(world.lights[i]);
-            if(i != world.lights.size() - 1)
-                code << ",";
-            code << "\n";
-        }
-
-        code << "};\n\n";
-    }
-    else {
-        code << "__constant Light lights[1]; // Dummy.\n\n";
-    }
 
     return code.str();
 }
@@ -310,21 +274,6 @@ std::string CodeGenerator::generatePolyhedrons(const World &world) {
     return code.str();
 }
 
-std::string CodeGenerator::writeLight(const Light &light) {
-    std::stringstream code;
-
-    code << "{ "
-        << writePoint(light.pos) << ", "
-        << writeColor(light.color) << ", "
-        << writeFloat(light.radius) << ", "
-        << writeFloat(light.constantAtt) << ", "
-        << writeFloat(light.linearAtt) << ", "
-        << writeFloat(light.quadraticAtt)
-        << " }";
-
-    return code.str();
-}
-
 std::string CodeGenerator::writeSolidTexture(const SolidTexture &tex) {
     std::stringstream code;
 
@@ -363,7 +312,6 @@ std::string CodeGenerator::writeMaterial(const Material &material) {
     std::stringstream code;
 
     code << "{ "
-        << writeFloat(material.ambientCoef) << ", "
         << writeFloat(material.diffuseCoef) << ", "
         << writeFloat(material.specularCoef) << ", "
         << writeFloat(material.specularExp) << ", "
@@ -379,6 +327,7 @@ std::string CodeGenerator::writeSphere(const Sphere &sphere) {
     std::stringstream code;
 
     code << "{ "
+        << writeColor(sphere.emission) << ", "
         << writePoint(sphere.center) << ", "
         << writeFloat(sphere.radius2) << ", "
         << sphere.textureType << ", "
@@ -441,7 +390,7 @@ std::string CodeGenerator::writeColor(const Color &color) {
 std::string CodeGenerator::writeFloat(float val) {
     std::stringstream code;
 
-    code << val;
+    code << std::fixed << val;
 
     if(code.str().find('.') == std::string::npos) {
         code << ".0";
@@ -459,9 +408,9 @@ std::string CodeGenerator::generateCode(const World &world, const Screen &screen
 
     code << "// Generated code. Do not change, as these changes will be lost.\n\n";
 
+    code << std::fixed;
     code << generateStructures(world)
         << generateConstants(screen, args)
-        << generateLights(world)
         << generateSolidTextures(world)
         << generateCheckerTextures(world)
         << generateMapTextures(world)

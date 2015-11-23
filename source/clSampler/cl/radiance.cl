@@ -28,9 +28,10 @@
 #include "object.cl"
 #include "random.cl"
 #include "recursion.cl"
+#include "brdf.cl"
 
 /**
- * Calculates the local color component.
+ * Calculates the direct light.
  * @param eyeDir Direction from the eye (camera).
  * @param iType Type of the first intersection.
  * @param id ID of the object of the first intersection.
@@ -38,26 +39,18 @@
  * @param normal Normal at intersection point.
  * @param material Material of the intersected object.
  * @param seed Random seed.
- * @param ambDiffColor output ambient + diffuse color.
- * @param specularCOlor output specular color.
+ * @return light.
  */
-void calculateLocalColor(float4 eyeDir, IntersectionType iType, int id,
-        float4 intersection, float4 normal, __constant Material *material,
-        uint2 *seed, float4 *ambDiffColor, float4 *specularColor);
-
-/**
- * Calculates the final color of the state.
- */
-float4 calculateFinalColor(State *t);
-
+float4 calculateDirectLight(float4 eyeDir, IntersectionType iType, int id,
+        float4 intersection, float4 normal, float4 texColor,
+        __constant Material *material, uint2 *seed);
 
 /**
  * Stages of the radiance recursion.
  */
-void radianceStage0(Stack *stack, RetStack *retStack, State *t);
-void radianceStage1(Stack *stack, RetStack *retStack, State *t);
-void radianceStage2(RetStack *retStack, State *t);
-void radianceStage3(RetStack *retStack, State *t);
+void radianceStage0(Stack *stack, RetStack *retStack, State *t, uint2 *seed);
+void radianceStage1(Stack *stack, RetStack *retStack, State *t, uint2 *seed);
+void radianceStage2(RetStack *retStack, State *t, uint2 *seed);
 
 /**
  * Calculates the color of the ray.
@@ -68,17 +61,16 @@ void radianceStage3(RetStack *retStack, State *t);
  */
 float4 radiance(float4 *origin, float4 *dir, uint2 *seed);
 
-void calculateLocalColor(float4 eyeDir, IntersectionType iType, int id,
-        float4 intersection, float4 normal, __constant Material *material,
-        uint2 *seed, float4 *ambDiffColor, float4 *specularColor)
+float4 calculateDirectLight(float4 eyeDir, IntersectionType iType, int id,
+        float4 intersection, float4 normal, float4 texColor,
+        __constant Material *material, uint2 *seed)
 {
-    *ambDiffColor = ambientLight.color * material->ambientCoef; // Add ambient.
-    *specularColor = (float4) (0.0f);
+    float4 ambLight = ambientLight.color * material->ambientCoef;
+    float4 diffLight = (float4) (0.0f);
+    float4 specLight = (float4) (0.0f);
 
     // For the N light samples, choose a random light and direction to the
     // light and calculate the local light component.
-    float4 diffLight = (float4) (0.0f);
-    float4 specLight = (float4) (0.0f);
     for(int i = 0; i < NumLightSamples; ++i) {
         // Get a random light and light position.
         uint lightID = randn(NumLights, seed);
@@ -95,7 +87,7 @@ void calculateLocalColor(float4 eyeDir, IntersectionType iType, int id,
         // reaching the light, then the object is not shadowed.
         // If the object intersects, then just use the ambient color and ignore
         // the others.
-        if(trace(intersection, lightDir, iType, id, &lightPos,
+        if(traceObjects(intersection, lightDir, iType, id, &lightPos,
                     0, 0, 0, 0) == NoIntersection) {
             // Calculate the diffuse light.
             float cosDiff = dot(lightDir, normal);
@@ -119,29 +111,22 @@ void calculateLocalColor(float4 eyeDir, IntersectionType iType, int id,
                 * material->specularCoef * att;
         }
     }
-    *ambDiffColor += NumLights * diffLight / NumLightSamples;
-    *specularColor += NumLights * specLight / NumLightSamples;
+    float4 color = texColor;
+    color *= ambLight + NumLights * diffLight / NumLightSamples;
+    color += NumLights * specLight / NumLightSamples;
+
+    return color;
 }
 
-float4 calculateFinalColor(State *t) {
-    // Calculate the final color.
-    // Ambient and diffuse colors are multiplied, the others need a sum.
-    float4 outColor = getTextureColor(t->textureType, t->textureID,
-            t->intersection);
-    outColor *= t->ambientDiffuseColor;
-    outColor += t->specularColor + t->reflectionColor + t->transmissionColor;
-
-    return clamp(outColor, 0.0f, 1.0f);
-}
-
-void radianceStage0(Stack *stack, RetStack *retStack, State *t) {
+void radianceStage0(Stack *stack, RetStack *retStack, State *t, uint2 *seed) {
     // See if the ray intersects anything.
-    t->iType = trace(t->origin, t->dir, t->exclType, t->exclID, 0, &t->id,
+    t->iType = traceObjects(t->origin, t->dir, t->exclType, t->exclID, 0, &t->id,
             &t->intersection, &t->normal, &t->inside);
 
     if(t->iType == NoIntersection) { // Don't need to do anything anymore.
         float4 *r = retStackTop(retStack);
-        *r = ambientLight.color;
+        //*r = ambientLight.color;
+        *r = (float4) (0.0f); // Stop using ambient light.
         retStackPush(retStack);
         return;
     }
@@ -149,20 +134,69 @@ void radianceStage0(Stack *stack, RetStack *retStack, State *t) {
     // Go to stage that estimates the light color.
     State *newT = stackTop(stack);
     initStage1(newT, &t->dir, &t->intersection, t->iType, t->id, &t->normal,
-            t->inside, t->seed);
+            t->inside);
     stackPush(stack);
 }
 
-void radianceStage1(Stack *stack, RetStack *retStack, State *t) {
+void radianceStage1(Stack *stack, RetStack *retStack, State *t, uint2 *seed) {
     // Get the ids from the object.
     getObjectIDs(t->iType, t->id, &t->materialID, &t->textureType,
             &t->textureID);
+    t->radiance = getTextureColor(t->textureType, t->textureID, t->intersection);
 
-    // Calculate the local component of the color.
-    calculateLocalColor(t->dir, t->iType, t->id, t->intersection, t->normal,
-            &materials[t->materialID], t->seed, &t->ambientDiffuseColor,
-            &t->specularColor);
+    // Decide to sample diffuse or specular or nothing.
+    float u = randf(seed);
+    __constant Material *material = &materials[t->materialID];
+    if(u < material->diffuseCoef) { // Diffuse reflection.
+        float f;
+        float4 newDir = brdfDiffuse(t->normal, material, &f, seed);
+        if(newDir.x) { }
+        t->radiance += f * directRadiance(t->intersection, newDir, t->iType, t->id)
+            * dot(t->normal, newDir);
+    }
+    else if(u < material->diffuseCoef + material->specularCoef) { // Specular reflection.
+        float f;
+        float4 newDir = brdfSpecular(-1.0f * t->dir, t->normal, material, &f, seed);
+        if(newDir.x) { }
+        t->radiance += f * directRadiance(t->intersection, newDir, t->iType, t->id)
+            * dot(t->normal, newDir);
+    }
+    else { // No contribution.
+        t->radiance = 0.0f;
+    }
 
+/*
+    // Calculate the direct light.
+    t->light = calculateDirectLight(t->dir, t->iType, t->id, t->intersection,
+            t->normal, texColor, &materials[t->materialID], t->seed);
+
+    // Calculate the indirect light.
+    float u = randf(t->seed);
+    const float p_RR = 0.5f;
+
+    if(u < p_RR) {
+        float4 wi = randsphere(t->seed);
+
+        // See if the ray intersects anything.
+        t->iType = trace(t->intersection, wi, t->exclType, t->exclID, 0, &t->id,
+                &t->intersection, &t->normal, &t->inside);
+
+        if(t->iType == NoIntersection) { // Don't need to do anything anymore.
+            float4 *r = retStackTop(retStack);
+            *r = ambientLight.color;
+            // *r = (float4) (0.0f); // Stop using ambient light.
+            retStackPush(retStack);
+            return;
+        }
+
+
+        t->light += calculateIndirectLight
+    }
+    */
+
+    float4 *r = retStackTop(retStack);
+    *r = clamp(t->radiance, 0.0f, 1.0f);
+    retStackPush(retStack);
 /*
     t->reflectionColor = (float4) (0.0f);
     t->transmissionColor = (float4) (0.0f);
@@ -179,7 +213,6 @@ void radianceStage1(Stack *stack, RetStack *retStack, State *t) {
         return;
     }
 */
-    radianceStage3(retStack, t);
 /*
     retStackPop(retStack);
     t->reflectionColor = *retStackTop(retStack);
@@ -208,18 +241,14 @@ void radianceStage1(Stack *stack, RetStack *retStack, State *t) {
     */
 }
 
-void radianceStage2(RetStack *retStack, State *t) {
+void radianceStage2(RetStack *retStack, State *t, uint2 *seed) {
+    /*
     retStackPop(retStack);
     t->transmissionColor = *retStackTop(retStack);
     t->transmissionColor *= materials[t->materialID].transmissionCoef;
 
     radianceStage3(retStack, t);
-}
-
-void radianceStage3(RetStack *retStack, State *t) {
-        float4 *r = retStackTop(retStack);
-        *r = calculateFinalColor(t);
-        retStackPush(retStack);
+    */
 }
 
 float4 radiance(float4 *argOrigin, float4 *argDir, uint2 *seed) {
@@ -231,7 +260,7 @@ float4 radiance(float4 *argOrigin, float4 *argDir, uint2 *seed) {
     retStackInit(&retStack);
 
     t = stackTop(&stack);
-    initStage0(t, *argOrigin, *argDir, NoIntersection, seed);
+    initStage0(t, *argOrigin, *argDir, NoIntersection);
     stackPush(&stack);
 
     // Simulated recursion.
@@ -239,9 +268,9 @@ float4 radiance(float4 *argOrigin, float4 *argDir, uint2 *seed) {
         stackPop(&stack);
         t = stackTop(&stack);
         switch(t->stage) {
-            case 0: radianceStage0(&stack, &retStack, t); break;
-            case 1: radianceStage1(&stack, &retStack, t); break;
-            case 2: radianceStage2(&retStack, t); break;
+            case 0: radianceStage0(&stack, &retStack, t, seed); break;
+            case 1: radianceStage1(&stack, &retStack, t, seed); break;
+            case 2: radianceStage2(&retStack, t, seed); break;
         }
     }
 

@@ -38,9 +38,6 @@ class CodeGenerator {
     /// Generates the constants.
     std::string generateConstants(const Screen &screen, const CmdArgs &args);
 
-    /// Generates the lights.
-    std::string generateLights(const World &world);
-
     /// Generates the solid textures.
     std::string generateSolidTextures(const World &world);
 
@@ -58,9 +55,6 @@ class CodeGenerator {
 
     /// Generates the polyhedron objects.
     std::string generatePolyhedrons(const World &world);
-
-    /// Writes a light structure initialization code.
-    std::string writeLight(const Light &light);
 
     /// Writes a solid texture.
     std::string writeSolidTexture(const SolidTexture &tex);
