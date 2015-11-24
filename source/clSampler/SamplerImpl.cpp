@@ -34,24 +34,34 @@
 // Where the sampler.cl file is.
 #define SAMPLER_CLSOURCE_PATH CL_SOURCE_DIR "sampler.cl"
 
-#ifdef __APPLE__ // Apple has really buggy GPU drivers.
-#   define SAMPLER_DEVICE_TYPE CL_DEVICE_TYPE_CPU
-#else
-#   define SAMPLER_DEVICE_TYPE CL_DEVICE_TYPE_GPU
-#endif
-
-// Maximum recursion depth.
-#define MAX_DEPTH 4
+// GPU drivers are simply horrible.
+#define SAMPLER_DEVICE_TYPE CL_DEVICE_TYPE_CPU
 
 Sampler::SamplerImpl::SamplerImpl(const World &world, const Screen &screen,
         const CmdArgs &args)
         : _width{screen.width()}, _height{screen.height()} {
     int err;
 
-    err = clGetPlatformIDs(1, &_platform, NULL);
-    stop_if(err < 0, "failed to find an OpenCL platform. Error %d.", err);
+    cl_platform_id *platforms;
+    size_t numPlatforms;
 
-    err = clGetDeviceIDs(_platform, SAMPLER_DEVICE_TYPE, 1, &_device, NULL);
+    err = clGetPlatformIDs(0, NULL, &numPlatforms);
+    stop_if(err < 0, "failed to find number of OpenCL platforms. Error %d.", err);
+
+    platforms = new cl_platform_id[numPlatforms];
+
+    err = clGetPlatformIDs(numPlatforms, platforms, NULL);
+    stop_if(err < 0, "failed to find OpenCL platforms. Error %d.", err);
+
+
+    for(size_t i = 0; i < numPlatforms; ++i) {
+        err = clGetDeviceIDs(platforms[i], SAMPLER_DEVICE_TYPE, 1, &_device, NULL);
+        if(err >= 0) {
+            _platform = platforms[i];
+            break;
+        }
+    }
+    delete[] platforms;
     stop_if(err < 0, "failed to find a device. Error %d.", err);
 
     _context = clCreateContext(NULL, 1, &_device, NULL, NULL,
@@ -64,9 +74,9 @@ Sampler::SamplerImpl::SamplerImpl(const World &world, const Screen &screen,
     auto source = generateSource(world, screen, args);
     _program = cluBuildProgram(_context, _device, source.c_str(), source.size(),
             "-I " CL_SOURCE_DIR " "
-            "-Werror -cl-strict-aliasing -cl-mad-enable -cl-no-signed-zeros "
-            "-cl-unsafe-math-optimizations -cl-finite-math-only -cl-fast-relaxed-math "
-            "-DMAX_DEPTH=" STR(MAX_DEPTH), &err);
+            "-Werror -cl-mad-enable -cl-no-signed-zeros "
+            "-cl-unsafe-math-optimizations -cl-fast-relaxed-math ",
+            &err);
     stop_if(err < 0, "failed to compile the OpenCL kernel.");
 
     _sampleKernel = clCreateKernel(_program, "sample", &err);
