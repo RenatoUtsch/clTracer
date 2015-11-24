@@ -96,7 +96,7 @@ void radianceStage0(Stack *stack, RetStack *retStack, State *t, uint2 *seed) {
         return;
     }
 
-    // Russian roulette.
+    // Russian roulette, based on dot(camera * (-1.0f), normal).
     float u = randf(seed);
     float rr = clamp(dot(-1.0f * t->dir, normal), 0.0f, 1.0f);
     if(u < rr) { // Trace ray.
@@ -118,10 +118,9 @@ void radianceStage0(Stack *stack, RetStack *retStack, State *t, uint2 *seed) {
             initState(newT, intersection, newDir, iType, id);
             stackPush(stack); // New iteration.
         }
-        else {
-            float4 *r = retStackTop(retStack);
-            *r = (float4) (0.0f, 0.0f, 0.0f, 1.0f);
-            retStackPush(retStack);
+        else { // Resample.
+            stackPush(stack);
+            return;
         }
     }
     else { // Return no contribution.
