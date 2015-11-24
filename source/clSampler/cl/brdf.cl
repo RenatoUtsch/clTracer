@@ -7,6 +7,7 @@
  * Given the ray direction, intersection normal, material and if it is inside
  * the object, returns a new ray direction, the BRDF f function and the pdf.
  * Returns if a new direction was generated or if is to stop recursion.
+ * The BRDF f value still needs to be multiplied by the albedo.
  */
 bool brdf(float4 dir, float4 normal, __constant Material *mat, bool inside,
         uint2 *seed, float4 *newDir, float *f, float *pdf);
@@ -75,8 +76,9 @@ bool brdfDiffuse(float4 normal, __constant Material *mat, uint2 *seed,
         w * sqrt(1.0f - u2)
     ));
 
-    *f = mat->diffuseCoef * M_1_PI;
-    *pdf = dot(normal, *newDir) * M_1_PI;
+    float cosND = dot(normal, *newDir);
+    *f = mat->diffuseCoef * M_1_PI * cosND;
+    *pdf = cosND * M_1_PI;
 
     if(fabs(*pdf) < FLT_EPSILON)
         return false;
@@ -105,10 +107,10 @@ bool brdfSpecular(float4 dir, float4 normal, __constant Material *mat,
     float cosAlpha = dot(dir, *newDir);
     if(cosAlpha < 0.0f) cosAlpha = cos(M_PI / 2.0f);
 
-    *f = mat->specularCoef * (mat->specularExp + 2.0f)
-        * (2.0f * M_1_PI) * pow(cosAlpha, mat->specularExp);
+    *f = mat->specularCoef * (mat->specularExp + 8.0f)
+        * (8.0f * M_1_PI) * pow(cosAlpha, mat->specularExp);
 
-    *pdf = (mat->specularExp + 1.0f) * (2.0f * M_1_PI)
+    *pdf = (mat->specularExp + 2.0f) * (2.0f * M_1_PI)
         * pow(cosAlpha, mat->specularExp);
 
     if(fabs(*pdf) < FLT_EPSILON)
