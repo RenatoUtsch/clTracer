@@ -43,7 +43,7 @@ Sampler::SamplerImpl::SamplerImpl(const World &world, const Screen &screen,
     int err;
 
     cl_platform_id *platforms;
-    size_t numPlatforms;
+    unsigned numPlatforms;
 
     err = clGetPlatformIDs(0, NULL, &numPlatforms);
     stop_if(err < 0, "failed to find number of OpenCL platforms. Error %d.", err);
