@@ -53,7 +53,7 @@ float4 radiance(float4 *argOrigin, float4 *argDir, uint2 *seed) {
     retStackInit(&retStack);
 
     t = stackTop(&stack);
-    initState(t, *argOrigin, *argDir, NoIntersection, -1);
+    initState(t, *argOrigin, *argDir, NoIntersection, -1, true);
     stackPush(&stack);
 
     // Simulated recursion.
@@ -91,9 +91,43 @@ void radianceStage0(Stack *stack, RetStack *retStack, State *t, uint2 *seed) {
     // If is emitter, return the emitted color.
     if(iType == SphereIntersection && sphereEmits(id)) {
         float4 *r = retStackTop(retStack);
-        *r = spheres[id].emission;
+        //if(t->emit)
+            *r = spheres[id].emission;
+        //else
+            //*r = (float4) (0.0f, 0.0f, 0.0f, 1.0f);
         retStackPush(retStack);
         return;
+    }
+
+    // Direct light.
+    t->radiance = (float4) (0.0f, 0.0f, 0.0f, 1.0f);
+    int lightID = randn(NumLights, seed);
+    float cosAMax;
+    float4 lightPoint, lightDir;
+    if(getRandomLightDir(intersection, &lights[lightID], seed, &lightPoint,
+                &lightDir, &cosAMax)) {
+        int feelerID;
+        float4 feelerIntersection, feelerNormal;
+        bool feelerInside;
+        IntersectionType feelerType = trace(intersection, lightDir, iType, id,
+                &lightPoint, &feelerID, &feelerIntersection, &feelerNormal,
+                &feelerInside);
+
+        if(feelerType == SphereIntersection && feelerID == lights[lightID].sphereID) {
+            float4 newDir, color;
+            float f, pdf;
+            int matID, texID;
+            TextureType texType;
+
+            getObjectIDs(feelerType, feelerID, &matID, &texType, &texID);
+            color = getTextureColor(texType, texID, intersection);
+            if(brdf(intersection, feelerNormal, &materials[matID], feelerInside,
+                        seed, &newDir, &f, &pdf)) {
+                float omega = 2.0f * M_PI * (1.0f - cosAMax);
+                float ci = max(dot(lightDir, feelerNormal), 0.0f);
+                t->radiance += color * f * lights[lightID].emission * ci * omega / pdf;
+            }
+        }
     }
 
     // Russian roulette, based on dot(camera * (-1.0f), normal).
@@ -115,7 +149,7 @@ void radianceStage0(Stack *stack, RetStack *retStack, State *t, uint2 *seed) {
 
             // Push new recursion.
             State *newT = stackTop(stack);
-            initState(newT, intersection, newDir, iType, id);
+            initState(newT, intersection, newDir, iType, id, false);
             stackPush(stack); // New iteration.
         }
         else { // Resample.
@@ -133,7 +167,8 @@ void radianceStage0(Stack *stack, RetStack *retStack, State *t, uint2 *seed) {
 void radianceStage1(Stack *stack, RetStack *retStack, State *t, uint2 *seed) {
     retStackPop(retStack);
     float4 *r = retStackTop(retStack);
-    *r *= t->factor; // Calculate the proper light.
+    t->radiance += *r * t->factor; // Calculate the proper light.
+    *r = t->radiance;
     retStackPush(retStack); // Return.
 }
 

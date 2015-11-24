@@ -42,6 +42,11 @@ uint randn(uint n, uint2 *state);
 float randf(uint2 *state);
 
 /**
+ * Same as randf(), but convertes the result to a float on the range [-1, 1].
+ */
+float rand2f(uint2 *state);
+
+/**
  * Generates a random value in a circle.
  * @param center Center of the circle.
  * @param right Right vector of the circle.
@@ -54,7 +59,7 @@ float4 randcircle(float4 center, float4 right, float4 up, float radius,
 /**
  * Generates a random direction in a unit hemisphere.
  */
-float4 randhemisphere(uint2 *state);
+float4 randsphere(uint2 *state);
 
 uint rand(uint2 *state) {
     enum { A=4294883355U };
@@ -77,21 +82,12 @@ float randf(uint2 *state) {
     return (float) rand(state) / UINT_MAX;
 }
 
-float4 randcircle(float4 center, float4 right, float4 up, float radius,
-        uint2 *state) {
-    float4 point;
-
-    // TODO: this is rejection sampling. Should implement something faster.
-    do {
-        point = center + (randf(state) * 2 * radius - radius) * right
-            + (randf(state) * 2 * radius - radius) * up;
-    } while(fabs(distance(center, point)) > radius);
-
-    return point;
+float rand2f(uint2 *state) {
+    return (float) rand(state) / ((float) UINT_MAX / 2.0f) - 1.0f;
 }
 
-float4 randhemisphere(uint2 *state) {
-    float u1 = randf(state), u2 = randf(state);
+float4 randsphere(uint2 *state) {
+    float u1 = rand2f(state), u2 = randf(state);
     float s = sqrt(1.0f - pow(u1, 2));
     float u2_2p = 2 * M_PI * u2;
 

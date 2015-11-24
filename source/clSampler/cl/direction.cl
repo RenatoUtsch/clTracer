@@ -24,6 +24,7 @@
 #define DIRECTION_CL
 
 #include "random.cl"
+#include "intersection.cl"
 
 /**
  * Returns the reflection direction.
@@ -42,6 +43,12 @@ float4 getReflectionDirection(float4 dir, float4 normal);
  */
 bool getTransmissionDirection(float refrRate, float4 dir, float4 normal,
         bool inside, float4 *transDir);
+
+/**
+ * Returns a random light point and the cos of the maximum angle.
+ */
+bool getRandomLightDir(float4 origin, __constant Light *light, uint2 *seed,
+        float4 *point, float4 *dir, float *cosAMax);
 
 float4 getReflectionDirection(float4 dir, float4 normal) {
     // Get the inversion of the direction.
@@ -66,6 +73,39 @@ bool getTransmissionDirection(float refrRate, float4 dir, float4 normal,
     }
     else { // Parallel ray.
         return false;
+    }
+}
+
+bool getRandomLightDir(float4 origin, __constant Light *light, uint2 *seed,
+        float4 *point, float4 *dir, float *cosAMax) {
+    float4 sw = normalize(light->center - origin);
+    float4 su = normalize(fabs(sw.x) > 0.1 ? (float4) (0.0f, 1.0f, 0.0f, 0.0f)
+            : (float4) (1.0f, 0.0f, 0.0f, 0.0f));
+    float4 sv = cross(sw, su);
+
+    float4 k = origin - light->center;
+    *cosAMax = sqrt(1.0f - light->radius2 / dot(k, k));
+
+    float u1 = randf(seed), u2 = randf(seed);
+    float cosA = 1.0f - u1  + u1 * *cosAMax;
+    float sinA = sqrt(1.0f - pow(cosA, 2));
+    float phi = 2.0f * M_PI * u2;
+
+    *dir = normalize(
+        su * cos(phi) * sinA +
+        sv * sin(phi) * sinA +
+        sw * cosA
+    );
+
+    bool inside;
+    float t = sphereIntersection(origin, *dir, light->center, light->radius2,
+            FLT_MAX, &inside);
+    if(t < 0.0f) {
+        return false;
+    }
+    else {
+        *point = origin + t * *dir;
+        return true;
     }
 }
 

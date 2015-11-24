@@ -30,9 +30,10 @@
 /// Recursion state.
 typedef struct State {
     float4 origin, dir;
-    float4 factor;
+    float4 radiance, factor;
     int exclID, stage;
     IntersectionType exclType;
+    bool emit;
 } State;
 
 /// Stack used for recursion.
@@ -54,7 +55,7 @@ void stackPush(Stack *stack);
 void stackPop(Stack *stack);
 bool stackEmpty(Stack *stack);
 void initState(State *t, float4 origin, float4 dir, IntersectionType exclType,
-        int exclID);
+        int exclID, bool emit);
 void retStackInit(RetStack *retStack);
 float4 *retStackTop(RetStack *retStack);
 void retStackPush(RetStack *retStack);
@@ -81,12 +82,13 @@ bool stackEmpty(Stack *stack) {
 }
 
 void initState(State *t, float4 origin, float4 dir, IntersectionType exclType,
-        int exclID) {
+        int exclID, bool emit) {
     t->origin = origin;
     t->dir = dir;
     t->exclType = exclType;
     t->exclID = exclID;
     t->stage = 0;
+    t->emit = emit;
 }
 
 void retStackInit(RetStack *retStack) {

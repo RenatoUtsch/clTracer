@@ -59,6 +59,16 @@ std::string CodeGenerator::generateStructures(const World &world) {
         "    float refractionRate;\n"
         "} Material;\n"
         "\n"
+        "typedef struct Light {\n"
+        "    float4 emission;\n"
+        "    float4 center;\n"
+        "    float radius2;\n"
+        "    TextureType textureType;\n"
+        "    int textureID;\n"
+        "    int materialID;\n"
+        "    int sphereID;\n"
+        "} Light;\n"
+        "\n"
         "typedef struct Sphere {\n"
         "    float4 emission;\n"
         "    float4 center;\n"
@@ -210,6 +220,29 @@ std::string CodeGenerator::generateMaterials(const World &world) {
     return code.str();
 }
 
+std::string CodeGenerator::generateLights(const World &world) {
+    std::stringstream code;
+    std::stringstream lightCode;
+    size_t n = 0;
+
+    lightCode << "__constant Light lights[] = {\n";
+
+    for(size_t i = 0; i < world.spheres.size(); ++i) {
+        if(world.spheres[i].emission.r > 0.0f || world.spheres[i].emission.g > 0.0f
+                || world.spheres[i].emission.b > 0.0f) {
+            n++;
+            lightCode << "    " << writeLight(world.spheres[i], i) << ",\n";
+        }
+    }
+    stop_if(!n, "Need at least one light.");
+
+    lightCode << "};\n\n";
+
+    code << "#define NumLights " << n << "\n\n" << lightCode.str();
+
+    return code.str();
+}
+
 std::string CodeGenerator::generateSpheres(const World &world) {
     std::stringstream code;
 
@@ -323,6 +356,22 @@ std::string CodeGenerator::writeMaterial(const Material &material) {
     return code.str();
 }
 
+std::string CodeGenerator::writeLight(const Sphere &sphere, int i) {
+    std::stringstream code;
+
+    code << "{ "
+        << writeColor(sphere.emission) << ", "
+        << writePoint(sphere.center) << ", "
+        << writeFloat(sphere.radius2) << ", "
+        << sphere.textureType << ", "
+        << sphere.textureID << ", "
+        << sphere.materialID << ", "
+        << i
+        << " }";
+
+    return code.str();
+}
+
 std::string CodeGenerator::writeSphere(const Sphere &sphere) {
     std::stringstream code;
 
@@ -415,6 +464,7 @@ std::string CodeGenerator::generateCode(const World &world, const Screen &screen
         << generateCheckerTextures(world)
         << generateMapTextures(world)
         << generateMaterials(world)
+        << generateLights(world)
         << generateSpheres(world)
         << generatePolyhedrons(world)
         << "#include \"sampler.cl\"\n\n"; // Insert the source here.

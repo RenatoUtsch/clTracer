@@ -50,6 +50,9 @@ class CodeGenerator {
     /// Generates the materials.
     std::string generateMaterials(const World &world);
 
+    /// Generates the light objects.
+    std::string generateLights(const World &world);
+
     /// Generates the sphere objects.
     std::string generateSpheres(const World &world);
 
@@ -67,6 +70,9 @@ class CodeGenerator {
 
     /// Writes a material.
     std::string writeMaterial(const Material &material);
+
+    /// Writes a light object.
+    std::string writeLight(const Sphere &sphere, int i);
 
     /// Writes a sphere object.
     std::string writeSphere(const Sphere &sphere);
