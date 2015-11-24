@@ -76,7 +76,8 @@ bool brdfDiffuse(float4 normal, __constant Material *mat, uint2 *seed,
         w * sqrt(1.0f - u2)
     ));
 
-    float cosND = dot(normal, *newDir);
+    float cosND = max(dot(normal, *newDir), 0.0f);
+
     *f = mat->diffuseCoef * M_1_PI * cosND;
     *pdf = cosND * M_1_PI;
 
