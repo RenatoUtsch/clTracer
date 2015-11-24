@@ -108,10 +108,10 @@ bool brdfSpecular(float4 dir, float4 normal, __constant Material *mat,
     float cosAlpha = dot(dir, *newDir);
     if(cosAlpha < 0.0f) cosAlpha = cos(M_PI / 2.0f);
 
-    *f = mat->specularCoef * (mat->specularExp + 8.0f)
-        * (8.0f * M_1_PI) * pow(cosAlpha, mat->specularExp);
+    *f = mat->specularCoef * ((mat->specularExp + 8.0f)
+        / (8.0f * M_PI)) * pow(cosAlpha, mat->specularExp);
 
-    *pdf = (mat->specularExp + 2.0f) * (2.0f * M_1_PI)
+    *pdf = ((mat->specularExp + 2.0f) / (2.0f * M_PI))
         * pow(cosAlpha, mat->specularExp);
 
     if(fabs(*pdf) < FLT_EPSILON)
