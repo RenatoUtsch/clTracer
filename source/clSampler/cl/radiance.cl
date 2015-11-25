@@ -89,6 +89,8 @@ void radianceStage0(Stack *stack, RetStack *retStack, State *t, uint2 *seed) {
     }
 
     // If is emitter, return the emitted color.
+    // This is a simplification. I'm assuming that an emitter doesn't reflect
+    // light.
     if(iType == SphereIntersection && sphereEmits(id)) {
         float4 *r = retStackTop(retStack);
         *r = spheres[id].emission;
@@ -96,19 +98,19 @@ void radianceStage0(Stack *stack, RetStack *retStack, State *t, uint2 *seed) {
         return;
     }
 
-    // Russian roulette, based on dot(camera * (-1.0f), normal).
-    float u = randf(seed);
-    float rr = clamp(dot(-1.0f * t->dir, normal), 0.0f, 1.0f);
-    if(u < rr) { // Trace ray.
-        float4 newDir, color;
-        float f, pdf;
+    // Russian roulette.
+    float rr = 0.7;
+    if(randf(seed) < rr) { // Trace ray.
+        float4 newDir, color, f;
+        float pdf;
         int matID, texID;
         TextureType texType;
 
         getObjectIDs(iType, id, &matID, &texType, &texID);
         color = getTextureColor(texType, texID, intersection);
-        if(brdf(t->dir, normal, &materials[matID], inside, seed, &newDir, &f, &pdf)) {
-            t->factor = color * f / (pdf * rr);
+        if(brdf(t->dir, normal, color, &materials[matID], inside, seed,
+                    &newDir, &f, &pdf)) {
+            t->factor = f / (pdf * rr);
 
             t->stage = 1;
             stackPush(stack); // Set this for when the recursion returns.
