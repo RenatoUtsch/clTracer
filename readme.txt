@@ -64,3 +64,41 @@ The source/clSampler/cl folder contains all the OpenCL source code.
 The implemented PathTracer didn't divide between direct and indirect lights,
 considering all the light on each iteration of the recursion, including
 emitted light.
+
+The Russian Roulette probability was set to 0.7. I tried other approaches,
+for example using the dot(-wi, n) (cosine of the angle between the inverse
+of the light direction and the surface normal), but although faster, they
+didn't converge as well as using 0.7 and they also introduced different
+noises.
+
+The decision of which kind of bsdf to use when sampling the ray was made
+by an uniform random variable. As the material coefficients were normalized,
+the sum of all the coefficients were sure to be <= 1. After generating the
+random variable, if it was on the range of one of the coefficients, this
+brdf would be sampled. For example, if kd was 0.3, ks was 0.3 and kt was 0.2,
+then if the uniform random variable u (in the range [0, 1]) was < 0.3,
+the diffuse brdf would be used. If 0.3 <= u < 0.6, the specular brdf would
+be used. If 0.6 <= u < 0.8, the transmission BTDF would be used. If
+0.8 <= u <= 1.0, then the ray wouldn't be sampled.
+
+On each iteration of the recursion, that was simulated using two stacks as
+OpenCL doesn't support recursion, the current radiance would be added to
+f * (next iteration radiance) / (pdf * rr).
+
+== Conclusions
+==============
+The Pathtracing algorithm is capable of producing very realistic results
+when using a big quantity of samples. Because of this, it is a suitable
+algorithm for when accurate simulation of the reality is needed. One
+drawback is that it is very slow to converge without visible noise, so it
+is only applicable on situations where the algorithm has time to run before
+the results being presented, for example in an animated movie.
+
+When the time spent with calculating the illumination with pathtracing is
+prohibitive, Raytracing can be used instead. Although raytracing isn't
+capable of producing the same degree of realism as pathtracing, the
+illumination can be calculated much faster, to the point that although
+with current hardware realtime pathtracing (without noise) isn't possible,
+realtime raytracing is certainly possible. Also, the results of the image
+with raytracing, although not completely realist, can be very convincing
+depending of the simplifications made.

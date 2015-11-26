@@ -22,6 +22,7 @@
 
 #include "CmdArgs.hpp"
 #include "error.hpp"
+#include <algorithm>
 #include <iostream>
 #include <fstream>
 #include <cstdlib>
